@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="../ProductService/CatalogService.csproj" />
+  <Project Path="Auth.csproj" />
+</Solution>

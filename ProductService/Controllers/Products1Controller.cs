@@ -55,4 +55,14 @@ public class Products1Controller : ControllerBase
         var product = _service.GetProductDetails(id);
         return Ok(product);
     }
+
+    [HttpGet("search")]
+    public async Task<IActionResult> Search(string query)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+            return BadRequest("Search query is required");
+
+        var results = await _service.SearchProduct(query);
+        return Ok(results);
+    }
 }

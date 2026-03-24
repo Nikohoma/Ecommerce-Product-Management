@@ -10,5 +10,7 @@ namespace CatalogService.Services
         Task DeleteProduct(int id);
         Task<Product> GetProductDetails(int id);
         Task UpdateProduct(int id, ProductCreateDto updatedProduct);
+        Task<Product> SearchProduct(string name);
+
     }
 }

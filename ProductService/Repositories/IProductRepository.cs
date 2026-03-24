@@ -10,6 +10,7 @@ namespace CatalogService.Repositories
         Task DeleteProductAsync(int id);
         Task<Product> GetProductDetailsAsync(int id);
         Task UpdateProductAsync(int id, Product updatedProduct);
+        Task<Product> SearchProductAsync(string name);
             
     }
 }

@@ -1,6 +1,7 @@
 ﻿using CatalogService.DTO.Products;
 using CatalogService.Models;
 using CatalogService.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace CatalogService.Services
 {
@@ -41,6 +42,12 @@ namespace CatalogService.Services
             var newProduct = new Product() { Name = updatedProduct.Name, Description = updatedProduct.Description, Price = updatedProduct.Price, Stock = updatedProduct.Stock };
             await _repo.UpdateProductAsync(id, newProduct);
             Console.WriteLine("Product updated successfully.");
+        }
+
+        public async Task<Product> SearchProduct(string name)
+        {
+            var find = await _repo.SearchProductAsync(name);
+            return find;
         }
     }
 }

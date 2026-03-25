@@ -1,4 +1,5 @@
 <Solution>
   <Project Path="../ProductService/CatalogService.csproj" />
+  <Project Path="../ProductWorkflowService/ProductWorkflowService.csproj" Id="01e553bd-0ae4-4df0-9a21-ffc444bbdf1a" />
   <Project Path="Auth.csproj" />
 </Solution>

@@ -31,15 +31,21 @@ namespace CatalogService.Repositories
 
         public async Task<List<Product>> GetAllProductsAsync()
         {
-            var products = await _context.Products.ToListAsync();
-            if (products!= null) { return products; }
-            return new List<Product>();
+            var products = await _context.Products.Include(p => p.Category).ToListAsync();
+
+            return products ?? new List<Product>();
         }
 
         public async Task<Product> GetProductDetailsAsync(int id)
         {
-            var product = await _context.Products.Where(p => p.Id == id).FirstOrDefaultAsync();
-            if (product == null) { Console.WriteLine("No Product Found"); return default; }
+            var product = await _context.Products.Include(p => p.Category).FirstOrDefaultAsync(p => p.Id == id);
+
+            if (product == null)
+            {
+                Console.WriteLine("No Product Found");
+                return default;
+            }
+
             return product;
         }
 
@@ -52,6 +58,7 @@ namespace CatalogService.Repositories
             product.Description = updatedProduct.Description;
             product.Price = updatedProduct.Price;
             product.Stock = updatedProduct.Stock;
+            product.CategoryId = updatedProduct.CategoryId;
 
             Console.WriteLine("Product updated.");
             await _context.SaveChangesAsync();
@@ -59,11 +66,18 @@ namespace CatalogService.Repositories
 
         public async Task<Product> SearchProductAsync(string name)
         {
-            var find = await _context.Products.Where(p => p.Name.ToLower().Contains(name)).FirstOrDefaultAsync();
+            var find = await _context.Products.Where(p => p.Name.ToLower().Contains(name.ToLower())).FirstOrDefaultAsync();
             if (find != null) { return find; }
             Console.WriteLine("No Product found.");
             return default;
         }
 
+        public async Task<List<Product>> GetProductsByCategoryAsync(int categoryId)
+        {
+            return await _context.Products
+                .Where(p => p.CategoryId == categoryId)
+                .Include(p => p.Category)
+                .ToListAsync();
+        }
     }
 }

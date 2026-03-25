@@ -11,6 +11,7 @@ namespace CatalogService.Services
         Task<Product> GetProductDetails(int id);
         Task UpdateProduct(int id, ProductCreateDto updatedProduct);
         Task<Product> SearchProduct(string name);
+        Task<List<Product>> GetProductsByCategory(int categoryId);
 
     }
 }

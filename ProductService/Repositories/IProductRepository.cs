@@ -11,6 +11,8 @@ namespace CatalogService.Repositories
         Task<Product> GetProductDetailsAsync(int id);
         Task UpdateProductAsync(int id, Product updatedProduct);
         Task<Product> SearchProductAsync(string name);
-            
+        Task<List<Product>> GetProductsByCategoryAsync(int categoryId);
+
+
     }
 }

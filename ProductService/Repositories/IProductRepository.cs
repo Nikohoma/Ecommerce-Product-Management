@@ -38,6 +38,15 @@ namespace CatalogService.Repositories
         // Optional future: stock deduction for orders
         Task<bool> DeductStockAsync(int productId, int quantity);
 
+        // Variant methods
+        Task CreateVariantAsync(ProductVariant variant);
+        Task<List<ProductVariant>> GetVariantsByProductAsync(int productId);
+        Task<ProductVariant> GetVariantDetailsAsync(int variantId);
+        Task UpdateVariantAsync(int variantId, ProductVariant updatedVariant);
+        Task UpdateVariantPriceAsync(int variantId, decimal newPrice);
+        Task UpdateVariantStockAsync(int variantId, int quantity);
+        Task DeleteVariantAsync(int variantId);
+        Task<bool> DeductVariantStockAsync(int variantId, int quantity);
 
     }
 }

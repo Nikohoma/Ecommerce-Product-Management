@@ -23,14 +23,14 @@ namespace CatalogService.Repositories
 
         public async Task<List<Product>> GetAllProductsAsync()
         {
-            var products = await _context.Products.Include(p => p.Category).ToListAsync();
+            var products = await _context.Products.Include(p => p.Category).Include(p => p.Variants).ToListAsync();
 
             return products ?? new List<Product>();
         }
 
         public async Task<Product> GetProductDetailsAsync(int id)
         {
-            var product = await _context.Products.Include(p => p.Category).FirstOrDefaultAsync(p => p.Id == id);
+            var product = await _context.Products.Include(p => p.Category).Include(p => p.Variants).FirstOrDefaultAsync(p => p.Id == id);
 
             if (product == null)
             {
@@ -154,6 +154,111 @@ namespace CatalogService.Repositories
                 return false; // Not enough stock
 
             product.AvailableQuantity -= quantity;
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+
+        // ----------------- Variant Methods -----------------
+
+        // Create a new variant
+        public async Task CreateVariantAsync(ProductVariant variant)
+        {
+            if (variant == null) return;
+
+            var productExists = await _context.Products
+                .AnyAsync(p => p.Id == variant.ProductId);
+
+            if (!productExists)
+                throw new Exception("Parent product does not exist");
+
+            var variantExists = await _context.ProductVariants
+                .AnyAsync(v => v.ProductId == variant.ProductId && v.SKU == variant.SKU);
+
+            if (variantExists)
+                throw new Exception("Variant with same SKU already exists for this product");
+
+            _context.ProductVariants.Add(variant);
+            await _context.SaveChangesAsync();
+        }
+
+        // Get all variants for a product
+        public async Task<List<ProductVariant>> GetVariantsByProductAsync(int productId)
+        {
+            return await _context.ProductVariants
+                .Where(v => v.ProductId == productId)
+                .Include(v => v.Product)
+                .ToListAsync();
+        }
+
+        // Get details of a single variant
+        public async Task<ProductVariant> GetVariantDetailsAsync(int variantId)
+        {
+            var variant = await _context.ProductVariants
+                .Include(v => v.Product)
+                .FirstOrDefaultAsync(v => v.Id == variantId);
+
+            if (variant == null)
+                Console.WriteLine("Variant not found");
+
+            return variant;
+        }
+
+        // Update a variant (full update)
+        public async Task UpdateVariantAsync(int variantId, ProductVariant updatedVariant)
+        {
+            var variant = await _context.ProductVariants.FindAsync(variantId);
+            if (variant == null) throw new Exception("Variant not found");
+
+            variant.SKU = updatedVariant.SKU;
+            variant.Price = updatedVariant.Price;
+            variant.Stock = updatedVariant.Stock;
+            variant.Attributes = updatedVariant.Attributes;
+
+            await _context.SaveChangesAsync();
+        }
+
+        // Update only price
+        public async Task UpdateVariantPriceAsync(int variantId, decimal newPrice)
+        {
+            var variant = await _context.ProductVariants.FindAsync(variantId);
+            if (variant == null) throw new Exception("Variant not found");
+
+            variant.Price = newPrice;
+            await _context.SaveChangesAsync();
+        }
+
+        // Update only stock
+        public async Task UpdateVariantStockAsync(int variantId, int quantity)
+        {
+            var variant = await _context.ProductVariants.FindAsync(variantId);
+            if (variant == null) throw new Exception("Variant not found");
+            if (quantity < 0) throw new Exception("Stock cannot be negative");
+
+            variant.Stock = quantity;
+            await _context.SaveChangesAsync();
+        }
+
+        // Soft delete variant
+        public async Task DeleteVariantAsync(int variantId)
+        {
+            var variant = await _context.ProductVariants.FindAsync(variantId);
+            if (variant == null) return;
+
+            // Optional: set a Status field if you have one
+            _context.ProductVariants.Remove(variant); // or mark as inactive if soft-delete preferred
+            await _context.SaveChangesAsync();
+        }
+
+        // Deduct stock for variant
+        public async Task<bool> DeductVariantStockAsync(int variantId, int quantity)
+        {
+            var variant = await _context.ProductVariants.FindAsync(variantId);
+            if (variant == null) throw new Exception("Variant not found");
+
+            if (variant.Stock < quantity) return false;
+
+            variant.Stock -= quantity;
             await _context.SaveChangesAsync();
             return true;
         }

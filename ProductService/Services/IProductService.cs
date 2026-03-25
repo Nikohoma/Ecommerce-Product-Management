@@ -1,4 +1,5 @@
 ﻿using CatalogService.DTO.Products;
+using CatalogService.DTO.ProductVariant;
 using CatalogService.Models;
 
 namespace CatalogService.Services
@@ -35,6 +36,16 @@ namespace CatalogService.Services
 
         // Optional for order integration
         Task<bool> DeductStock(int productId, int quantity);
+
+        // Variant 
+        Task CreateVariant(ProductVariantCreateDto variantDto);
+        Task<List<ProductVariant>> GetVariantsByProduct(int productId);
+        Task<ProductVariant> GetVariantDetails(int variantId);
+        Task UpdateVariant(int variantId, ProductVariantCreateDto updatedVariant);
+        Task UpdateVariantPrice(int variantId, decimal newPrice);
+        Task UpdateVariantStock(int variantId, int newStock);
+        Task DeleteVariant(int variantId);
+        Task<bool> DeductVariantStock(int variantId, int quantity);
 
     }
 }

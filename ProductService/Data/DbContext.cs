@@ -16,6 +16,7 @@ namespace CatalogService.Data
 
         public DbSet<Product> Products { get; set; }
         public DbSet<Category> Categories { get; set; }
+        public DbSet<ProductVariant> ProductVariants { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -33,9 +34,18 @@ namespace CatalogService.Data
             modelBuilder.Entity<Product>()
             .Property(p => p.Status)
             .HasConversion<string>(); // stores "Draft", "Submitted", etc. in DB
-        
 
-        modelBuilder.Entity<Category>().HasData(
+            modelBuilder.Entity<ProductVariant>()
+            .Property(v => v.Price)
+            .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<ProductVariant>()
+                .HasOne(v => v.Product)
+                .WithMany(p => p.Variants)
+                .HasForeignKey(v => v.ProductId);
+
+
+            modelBuilder.Entity<Category>().HasData(
             new Category { Id = 1, Name = "Electronics" },
             new Category { Id = 2, Name = "Clothing" },
             new Category { Id = 3, Name = "Stationary" }          );

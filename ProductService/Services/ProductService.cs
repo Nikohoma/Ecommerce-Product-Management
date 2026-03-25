@@ -1,5 +1,6 @@
 ﻿using CatalogService.Data;
 using CatalogService.DTO.Products;
+using CatalogService.DTO.ProductVariant;
 using CatalogService.Models;
 using CatalogService.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -137,6 +138,84 @@ namespace CatalogService.Services
                 Console.WriteLine($"Deducted {quantity} units from Product {productId}");
             else
                 Console.WriteLine($"Insufficient stock for Product {productId}");
+
+            return success;
+        }
+
+        // ----------------- Variant Methods -----------------
+
+        public async Task CreateVariant(ProductVariantCreateDto variantDto)
+        {
+            // Check if parent product exists
+            var productExists = await _context.Products
+                .AnyAsync(p => p.Id == variantDto.ProductId);
+
+            if (!productExists)
+                throw new Exception("Invalid ProductId");
+
+            var variant = new ProductVariant()
+            {
+                ProductId = variantDto.ProductId,
+                SKU = variantDto.SKU,
+                Price = variantDto.Price,
+                Stock = variantDto.Stock,
+                Attributes = variantDto.Attributes
+            };
+
+            await _repo.CreateVariantAsync(variant);
+            Console.WriteLine("Variant created successfully.");
+        }
+
+        public async Task<List<ProductVariant>> GetVariantsByProduct(int productId)
+        {
+            return await _repo.GetVariantsByProductAsync(productId);
+        }
+
+        public async Task<ProductVariant> GetVariantDetails(int variantId)
+        {
+            return await _repo.GetVariantDetailsAsync(variantId);
+        }
+
+        public async Task UpdateVariant(int variantId, ProductVariantCreateDto updatedVariant)
+        {
+            var variant = new ProductVariant()
+            {
+                SKU = updatedVariant.SKU,
+                Price = updatedVariant.Price,
+                Stock = updatedVariant.Stock,
+                Attributes = updatedVariant.Attributes
+            };
+
+            await _repo.UpdateVariantAsync(variantId, variant);
+            Console.WriteLine("Variant updated successfully.");
+        }
+
+        public async Task UpdateVariantPrice(int variantId, decimal newPrice)
+        {
+            await _repo.UpdateVariantPriceAsync(variantId, newPrice);
+            Console.WriteLine($"Variant {variantId} price updated to {newPrice}");
+        }
+
+        public async Task UpdateVariantStock(int variantId, int newStock)
+        {
+            await _repo.UpdateVariantStockAsync(variantId, newStock);
+            Console.WriteLine($"Variant {variantId} stock updated to {newStock}");
+        }
+
+        public async Task DeleteVariant(int variantId)
+        {
+            await _repo.DeleteVariantAsync(variantId);
+            Console.WriteLine("Variant deleted successfully.");
+        }
+
+        public async Task<bool> DeductVariantStock(int variantId, int quantity)
+        {
+            var success = await _repo.DeductVariantStockAsync(variantId, quantity);
+
+            if (success)
+                Console.WriteLine($"Deducted {quantity} units from Variant {variantId}");
+            else
+                Console.WriteLine($"Insufficient stock for Variant {variantId}");
 
             return success;
         }

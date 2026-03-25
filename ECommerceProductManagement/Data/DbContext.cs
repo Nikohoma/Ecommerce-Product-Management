@@ -20,7 +20,12 @@ namespace ECommerceProductManagement.Data
             var entries = ChangeTracker
                 .Entries<BaseEntity>();
 
-            var currentUser = _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value??"System";
+            var user = _httpContextAccessor.HttpContext?.User;
+
+            var currentUser = user?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? user?.FindFirst(ClaimTypes.Name)?.Value
+                ?? user?.FindFirst(ClaimTypes.Email)?.Value
+                ?? "system";
 
             foreach (var entry in entries)
             {

@@ -16,13 +16,6 @@ public class ProductsController : ControllerBase
         _service = service;
     }
 
-    //[HttpGet]
-    //public async Task<IActionResult> GetAll()
-    //{
-    //    var products = await _service.GetAllProducts();
-    //    return Ok(products);
-    //}
-
 
     [Authorize(Roles = "Admin,ContentExecutive,ProductManager")]
     [HttpPost]
@@ -41,7 +34,7 @@ public class ProductsController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,ContentExecutive,ProductManager")]
     public async Task<IActionResult> Update(int id, ProductCreateDto updatedProduct)
     {
         await _service.UpdateProduct(id, updatedProduct);
@@ -82,9 +75,7 @@ public class ProductsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetProducts(
-    [FromQuery] string? search,
-    [FromQuery] int? categoryId)
+    public async Task<IActionResult> GetProducts([FromQuery] string? search,[FromQuery] int? categoryId)
     {
         if (!string.IsNullOrEmpty(search))
             return Ok(await _service.SearchProduct(search));
@@ -93,6 +84,57 @@ public class ProductsController : ControllerBase
             return Ok(await _service.GetProductsByCategory(categoryId.Value));
 
         return Ok(await _service.GetAllProducts());
+    }
+
+    [Authorize(Roles = "Admin,ProductManager")]
+    [HttpPost("{id}/submit")]
+    public async Task<IActionResult> Submit(int id)
+    {
+        await _service.SubmitProduct(id);
+        return Ok($"Product {id} submitted for approval.");
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("{id}/approve")]
+    public async Task<IActionResult> Approve(int id)
+    {
+        await _service.ApproveProduct(id);
+        return Ok($"Product {id} approved and active.");
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("{id}/reject")]
+    public async Task<IActionResult> Reject(int id)
+    {
+        await _service.RejectProduct(id);
+        return Ok($"Product {id} rejected.");
+    }
+
+    [Authorize(Roles = "Admin,ProductManager")]
+    [HttpPatch("{id}/price")]
+    public async Task<IActionResult> UpdatePrice(int id, [FromQuery] decimal newPrice)
+    {
+        await _service.UpdatePrice(id, newPrice);
+        return Ok($"Product {id} price updated to {newPrice}");
+    }
+
+    [Authorize(Roles = "Admin,ProductManager")]
+    [HttpPatch("{id}/inventory")]
+    public async Task<IActionResult> UpdateStock(int id, [FromQuery] int quantity)
+    {
+        await _service.UpdateStock(id, quantity);
+        return Ok($"Product {id} stock updated to {quantity}");
+    }
+
+    [HttpPost("{id}/deduct-stock")]
+    [Authorize(Roles = "OrderService")]
+    public async Task<IActionResult> DeductStock(int id, [FromQuery] int quantity)
+    {
+        var success = await _service.DeductStock(id, quantity);
+        if (!success)
+            return BadRequest("Insufficient stock");
+
+        return Ok($"Deducted {quantity} units from product {id}");
     }
 
 }

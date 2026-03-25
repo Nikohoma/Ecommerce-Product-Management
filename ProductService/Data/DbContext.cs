@@ -30,7 +30,12 @@ namespace CatalogService.Data
                 .Property(p => p.Price)
                 .HasPrecision(10, 2);
 
-            modelBuilder.Entity<Category>().HasData(
+            modelBuilder.Entity<Product>()
+            .Property(p => p.Status)
+            .HasConversion<string>(); // stores "Draft", "Submitted", etc. in DB
+        
+
+        modelBuilder.Entity<Category>().HasData(
             new Category { Id = 1, Name = "Electronics" },
             new Category { Id = 2, Name = "Clothing" },
             new Category { Id = 3, Name = "Stationary" }          );

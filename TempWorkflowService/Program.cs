@@ -1,22 +1,13 @@
-using CatalogService.Data;
-using CatalogService.Models;
-using CatalogService.Repositories;
-using CatalogService.Services;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
 using System.Text;
+using TempWorkflowService.Services;
 
 var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
-builder.Services.AddScoped<IProductService, ProductService>();
-builder.Services.AddScoped<IProductRepository, ProductRepository>();
-builder.Services.AddControllers();
-builder.Services.AddDbContext<ProductDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("ProductDb")));
-
-builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<WorkflowService>();
+builder.Services.AddScoped<Publisher>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 .AddJwtBearer(options =>
@@ -33,20 +24,25 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
         IssuerSigningKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])
-        )
+        ),
+        RoleClaimType = ClaimTypes.Role
     };
 });
-builder.Services.AddHostedService<WorkflowConsumer>();
+builder.Services.AddAuthorization();
 
+// Add services to the container.
 
+builder.Services.AddControllers();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
+
 app.UseSwagger();
 app.UseSwaggerUI();
 app.UseHttpsRedirection();
+
 app.UseAuthentication();
 app.UseAuthorization();
 

@@ -33,7 +33,7 @@ public class CatalogClient
 
         var response = await _httpClient.SendAsync(request);
 
-        // 🔥 CRITICAL: fail fast if something is wrong
+        // fail fast if something is wrong
         if (!response.IsSuccessStatusCode)
         {
             var error = await response.Content.ReadAsStringAsync();

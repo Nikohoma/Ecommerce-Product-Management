@@ -137,37 +137,37 @@ public class ProductsController : ControllerBase
         return Ok($"Deducted {quantity} units from product {id}");
     }
 
-    [ApiExplorerSettings(IgnoreApi = true)]
-    [Authorize(Roles = "WorkflowService,Admin,ProductManager")]
-    [HttpPost("{id}/internal/submit")]
-    public async Task<IActionResult> SubmitInternal(int id)
-    {
-        try
-        {
-            await _service.SubmitProduct(id);
-            return Ok(new { message = "Submitted", productId = id });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(ex.Message);
-        }
-    }
-    [ApiExplorerSettings(IgnoreApi = true)]
-    [Authorize(Roles = "WorkflowService,Admin,ProductManager")]
-    [HttpPost("{id}/internal/approve")]
-    public async Task<IActionResult> ApproveInternal(int id)
-    {
-        await _service.ApproveProduct(id);
-        return Ok(new { message = "Approved", productId = id });
-    }
+    //[ApiExplorerSettings(IgnoreApi = true)]
+    //[Authorize(Roles = "WorkflowService,Admin,ProductManager")]
+    //[HttpPost("{id}/internal/submit")]
+    //public async Task<IActionResult> SubmitInternal(int id)
+    //{
+    //    try
+    //    {
+    //        await _service.SubmitProduct(id);
+    //        return Ok(new { message = "Submitted", productId = id });
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        return BadRequest(ex.Message);
+    //    }
+    //}
+    //[ApiExplorerSettings(IgnoreApi = true)]
+    //[Authorize(Roles = "WorkflowService,Admin,ProductManager")]
+    //[HttpPost("{id}/internal/approve")]
+    //public async Task<IActionResult> ApproveInternal(int id)
+    //{
+    //    await _service.ApproveProduct(id);
+    //    return Ok(new { message = "Approved", productId = id });
+    //}
 
-    [ApiExplorerSettings(IgnoreApi = true)]
-    [Authorize(Roles = "WorkflowService,Admin,ProductManager")]
-    [HttpPost("{id}/internal/reject")]
-    public async Task<IActionResult> RejectInternal(int id)
-    {
-        await _service.RejectProduct(id);
-        return Ok(new { message = "Rejected", productId = id });
-    }
+    //[ApiExplorerSettings(IgnoreApi = true)]
+    //[Authorize(Roles = "WorkflowService,Admin,ProductManager")]
+    //[HttpPost("{id}/internal/reject")]
+    //public async Task<IActionResult> RejectInternal(int id)
+    //{
+    //    await _service.RejectProduct(id);
+    //    return Ok(new { message = "Rejected", productId = id });
+    //}
 
 }

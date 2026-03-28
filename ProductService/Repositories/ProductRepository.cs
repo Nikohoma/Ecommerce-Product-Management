@@ -1,15 +1,19 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using CatalogService.Data;
 using CatalogService.Models;
+using CatalogService.Services.Messaging;
+using Shared.Contracts;
 
 namespace CatalogService.Repositories
 {
     public class ProductRepository : IProductRepository
     {
         private readonly ProductDbContext _context;
-        public ProductRepository(ProductDbContext context)
+        private readonly PublisherForReport _publish;
+        public ProductRepository(ProductDbContext context, PublisherForReport publish)
         {
             _context = context;
+            _publish = publish;
         }
         // CRUD + Search + Filter
         public async Task CreateProductAsync(Product product)
@@ -19,6 +23,9 @@ namespace CatalogService.Repositories
             if (ifPresent) { Console.WriteLine("Product already present"); return; }
             _context.Products.Add(product);
             await _context.SaveChangesAsync();
+
+            ProductStatusChangedEvent sendProduct = new ProductStatusChangedEvent() { ProductId = product.Id, Status = product.Status.ToString(), UpdatedAt = DateTime.UtcNow, Price = product.Price };
+            await _publish.SendProductForReporting(sendProduct);
         }
 
         public async Task<List<Product>> GetAllProductsAsync()
@@ -59,11 +66,13 @@ namespace CatalogService.Repositories
             product.CategoryId = updatedProduct.CategoryId;
 
             await _context.SaveChangesAsync();
+            ProductStatusChangedEvent sendProduct = new ProductStatusChangedEvent() { ProductId = product.Id, Status = product.Status.ToString(), UpdatedAt = DateTime.UtcNow, Price = product.Price };
+            await _publish.SendProductForReporting(sendProduct);
         }
 
         public async Task<Product> SearchProductAsync(string name)
         {
-            var find = await _context.Products.Where(p => p.Name.ToLower().Contains(name.ToLower()) && p.Status != 0).FirstOrDefaultAsync();
+            var find = await _context.Products.Where(p => p.Name.ToLower().Contains(name.ToLower()) && (p.Status != ProductStatus.Draft || p.Status != ProductStatus.Inactive)).FirstOrDefaultAsync();
             if (find != null) { return find; }
             Console.WriteLine("No Product found.");
             return default;
@@ -72,7 +81,7 @@ namespace CatalogService.Repositories
         public async Task<List<Product>> GetProductsByCategoryAsync(int categoryId)
         {
             return await _context.Products
-                .Where(p => p.CategoryId == categoryId)
+                .Where(p => p.CategoryId == categoryId && (p.Status != ProductStatus.Draft || p.Status != ProductStatus.Inactive))
                 .Include(p => p.Category)
                 .ToListAsync();
         }
@@ -87,6 +96,8 @@ namespace CatalogService.Repositories
 
             product.Status = ProductStatus.Submitted;
             await _context.SaveChangesAsync();
+            ProductStatusChangedEvent sendProduct = new ProductStatusChangedEvent() { ProductId = product.Id, Status = product.Status.ToString(), UpdatedAt = DateTime.UtcNow, Price = product.Price };
+            await _publish.SendProductForReporting(sendProduct);
         }
         public async Task ApproveProductAsync(int productId)
         {
@@ -97,7 +108,10 @@ namespace CatalogService.Repositories
                 throw new Exception("Only submitted products can be approved");
 
             product.Status = ProductStatus.Active;
+
             await _context.SaveChangesAsync();
+            ProductStatusChangedEvent sendProduct = new ProductStatusChangedEvent() { ProductId = product.Id, Status = product.Status.ToString(), UpdatedAt = DateTime.UtcNow, Price = product.Price };
+            await _publish.SendProductForReporting(sendProduct);
         }
 
         public async Task RejectProductAsync(int productId)
@@ -110,6 +124,8 @@ namespace CatalogService.Repositories
 
             product.Status = ProductStatus.Rejected;
             await _context.SaveChangesAsync();
+            ProductStatusChangedEvent sendProduct = new ProductStatusChangedEvent() { ProductId = product.Id, Status = product.Status.ToString(), UpdatedAt = DateTime.UtcNow, Price = product.Price };
+            await _publish.SendProductForReporting(sendProduct);
         }
 
         // Restricted Updates
@@ -123,6 +139,8 @@ namespace CatalogService.Repositories
 
             product.Price = newPrice;
             await _context.SaveChangesAsync();
+            ProductStatusChangedEvent sendProduct = new ProductStatusChangedEvent() { ProductId = product.Id, Status = product.Status.ToString(), UpdatedAt = DateTime.UtcNow, Price = product.Price };
+            await _publish.SendProductForReporting(sendProduct);
         }
 
         public async Task UpdateStockAsync(int productId, int quantity)
@@ -143,6 +161,8 @@ namespace CatalogService.Repositories
             // Soft delete
             product.Status = ProductStatus.Inactive;
             await _context.SaveChangesAsync();
+            ProductStatusChangedEvent sendProduct = new ProductStatusChangedEvent() { ProductId = product.Id, Status = product.Status.ToString(), UpdatedAt = DateTime.UtcNow, Price = product.Price };
+            await _publish.SendProductForReporting(sendProduct);
         }
 
         public async Task<bool> DeductStockAsync(int productId, int quantity)

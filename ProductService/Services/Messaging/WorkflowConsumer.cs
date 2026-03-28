@@ -8,10 +8,10 @@ using CatalogService.Repositories;
 
 public class WorkflowConsumer : BackgroundService
 {
-    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IServiceScopeFactory _scopeFactory;  //To safely use scoped services (like DbContext) inside a singleton BackgroundService
     private readonly IConfiguration _configuration;
 
-    private IConnection _connection;
+    private RabbitMQ.Client.IConnection _connection;
     private IChannel _channel;
 
     public WorkflowConsumer(IServiceScopeFactory scopeFactory, IConfiguration configuration)

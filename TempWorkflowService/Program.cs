@@ -3,10 +3,10 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
 using System.Text;
-using TempWorkflowService.Services;
+using WorkflowServices.Services;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddScoped<WorkflowService>();
+builder.Services.AddScoped<WorkflowServices.Services.WorkflowService>();
 builder.Services.AddScoped<Publisher>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

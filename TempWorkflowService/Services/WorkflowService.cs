@@ -1,6 +1,6 @@
 ﻿using Shared.Contracts;
 
-namespace TempWorkflowService.Services
+namespace WorkflowServices.Services
 {
     public class WorkflowService
     {

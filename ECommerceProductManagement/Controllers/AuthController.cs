@@ -3,6 +3,7 @@ using ECommerceProductManagement.DTOs;
 using ECommerceProductManagement.Models;
 using ECommerceProductManagement.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 [ApiController]
 [Route("api/auth")]
@@ -41,9 +42,9 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
-    public IActionResult Login(LoginDto dto)
+    public async Task<IActionResult> Login(LoginDto dto)
     {
-        var user = _context.Users.FirstOrDefault(x => x.Email == dto.Email);
+        var user = await _context.Users.FirstOrDefaultAsync(x => x.Email == dto.Email);
 
         if (user == null || !_hasher.Verify(dto.Password, user.PasswordHash))
             return Unauthorized("Invalid credentials");

@@ -1,8 +1,9 @@
 <Solution>
+  <Project Path="../APIGateway/APIGateway.csproj" Id="69ac65a2-1771-42e7-98d6-a4028c20702b" />
   <Project Path="../ProductService/CatalogService.csproj" />
   <Project Path="../ProductWorkflowService/ProductWorkflowService.csproj" Id="01e553bd-0ae4-4df0-9a21-ffc444bbdf1a" />
   <Project Path="../ReportingService/ReportingService.csproj" Id="ed7de56b-bfec-4fcf-944f-82de1fce6d8e" />
   <Project Path="../Shared.Contracts/Shared.Contracts.csproj" Id="4c42a00c-12fb-44ed-9ab0-53cc5d8e6cf7" />
-  <Project Path="../TempWorkflowService/TempWorkflowService.csproj" Id="04d78c2f-369a-4b79-85f9-82cca7b444f9" />
+  <Project Path="../TempWorkflowService/WorkflowService.csproj" Id="04d78c2f-369a-4b79-85f9-82cca7b444f9" />
   <Project Path="Auth.csproj" />
 </Solution>

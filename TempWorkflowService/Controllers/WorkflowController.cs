@@ -2,18 +2,18 @@
 using Microsoft.AspNetCore.Mvc;
 using Shared.Contracts;
 using System.ComponentModel.DataAnnotations;
-using TempWorkflowService.Services;
+using WorkflowServices.Services;
 
-namespace TempWorkflowService.Controllers
+namespace WorkflowService.Controllers
 {
     [Authorize(Roles = "Admin")]
     [ApiController]
     [Route("test/[controller]")]
-    public class tempWorkflowController : Controller
+    public class WorkflowController : Controller
     {
-        public readonly WorkflowService _service;
+        public readonly WorkflowServices.Services.WorkflowService _service;
 
-        public tempWorkflowController(WorkflowService service)
+        public WorkflowController(WorkflowServices.Services.WorkflowService service)
         {
             _service = service;
         }

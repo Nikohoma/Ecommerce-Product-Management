@@ -19,7 +19,8 @@ public class JwtService
             new Claim(ClaimTypes.Name, email),
             new Claim(ClaimTypes.NameIdentifier, email),
             new Claim(ClaimTypes.Email, email),
-            new Claim(ClaimTypes.Role, role)
+            new Claim(ClaimTypes.Role, role),
+            //new Claim("Details Input","details")
         };
 
         var key = new SymmetricSecurityKey(

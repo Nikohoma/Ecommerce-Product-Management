@@ -4,6 +4,7 @@ using Microsoft.OpenApi;
 using Ocelot.DependencyInjection;
 using Ocelot.Middleware;
 using System.Text;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,12 +18,66 @@ builder.Configuration.AddJsonFile("ocelot.json", optional: false, reloadOnChange
 
 //  Services
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+//builder.Services.AddSwaggerGen();
+//builder.Services.AddSwaggerGen(c =>
+//{
+//    c.AddServer(new OpenApiServer
+//    {
+//        Url = "https://localhost:7098"
+//    });
+//    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Auth API", Version = "v1" });
+
+//    // Define the JWT security scheme
+//    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+//    {
+//        Name = "Authorization",
+//        Type = SecuritySchemeType.Http,
+//        Scheme = "Bearer",
+//        BearerFormat = "JWT",
+//        In = ParameterLocation.Header,
+//        Description = "Enter your JWT token. Example: eyJhbGci..."
+//    });
+
+//    // Apply it globally to all endpoints
+//    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+//    {
+//        {
+//            new OpenApiSecurityScheme
+//            {
+//                Reference = new OpenApiReference
+//                {
+//                    Type = ReferenceType.SecurityScheme,
+//                    Id = "Bearer"
+//                }
+//            },
+//            Array.Empty<string>()
+//        }
+//    });
+//});
 builder.Services.AddSwaggerGen(c =>
 {
-    c.AddServer(new OpenApiServer
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "JWTPractice API", Version = "v1" });
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Url = "https://localhost:7098"
+        Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer"
+    });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new string[] {}
+        }
     });
 });
 
@@ -48,6 +103,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 builder.Services.AddSwaggerForOcelot(builder.Configuration);
+
 builder.Services.AddOcelot();
 builder.Services.AddControllers();
 
@@ -55,12 +111,17 @@ var app = builder.Build();
 
 //Middleware
 app.UseSwagger();
-app.UseSwaggerUI();
+//app.UseSwaggerUI();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "API Gateway v1");
+});
 app.UseSwaggerForOcelotUI(opt =>
 {
     opt.PathToSwaggerGenerator = "/swagger/docs";
     //opt.TakeServersFromDownstreamService = true; // important
 });
+
 
 app.UseHttpsRedirection();
 

@@ -1,3 +1,4 @@
+using Auth.Services;
 using ECommerceProductManagement.Data;
 using ECommerceProductManagement.Services;
 using Microsoft.AspNetCore.Identity;
@@ -14,6 +15,8 @@ builder.Services.AddDbContext<UserDbContext>(options =>
 
 builder.Services.AddScoped<PasswordHasher>();
 builder.Services.AddScoped<JwtService>();
+builder.Services.AddScoped<OtpService>();
+builder.Services.AddScoped<EmailService>();
 
 var app = builder.Build();
 

@@ -115,13 +115,15 @@ builder.Services.AddControllers();
 
 var app = builder.Build();
 
-//Middleware
+app.MapGet("/test", () => "working");
+
 app.UseSwagger();
-//app.UseSwaggerUI();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "API Gateway v1");
 });
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseSwaggerForOcelotUI(opt =>
 {
     opt.PathToSwaggerGenerator = "/swagger/docs";
@@ -131,8 +133,7 @@ app.UseSwaggerForOcelotUI(opt =>
 
 app.UseHttpsRedirection();
 
-app.UseAuthentication();
-app.UseAuthorization();
+
 
 await app.UseOcelot();
 

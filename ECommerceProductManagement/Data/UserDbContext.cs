@@ -14,6 +14,7 @@ namespace ECommerceProductManagement.Data
         }
 
         public DbSet<User> Users { get; set; }
+        public DbSet<OtpRecord> OtpRecords { get; set; }
 
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

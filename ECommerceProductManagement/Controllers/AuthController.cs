@@ -109,7 +109,10 @@ public class AuthController : ControllerBase
         return Ok("Logged out.");
     }
     public record RefreshDto(string RefreshToken);
-
+    public record EmailDto(string Email);
+    public record RegisterDto(string Email, string Otp, string Password);
+    public record LoginDto(string Email, string Password);
+    public record OtpLoginDto(string Email, string Otp);
 
 
 }

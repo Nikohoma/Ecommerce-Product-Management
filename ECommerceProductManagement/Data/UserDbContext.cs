@@ -18,7 +18,7 @@ namespace ECommerceProductManagement.Data
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             var entries = ChangeTracker
-                .Entries<BaseEntity>();
+                .Entries<Audit>();
 
             var user = _httpContextAccessor.HttpContext?.User;
 

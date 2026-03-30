@@ -2,7 +2,7 @@
 
 namespace ECommerceProductManagement.Models
 {
-    public class User : BaseEntity
+    public class User : Audit
     {
 
         public int Id { get; set; }

@@ -10,7 +10,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddControllers();
 builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<UserDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("UsersDb")));
 
 builder.Services.AddScoped<PasswordHasher>();
 builder.Services.AddScoped<JwtService>();

@@ -1,6 +1,6 @@
 ﻿namespace Auth.Models
 {
-    public class BaseEntity
+    public class Audit
     {
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public string? CreatedBy { get; set; }

@@ -29,111 +29,328 @@ namespace AuthService.Controllers
         [HttpPost("register/send-otp")]
         public async Task<IActionResult> RegisterSendOtp([FromBody] EmailDto dto)
         {
-            if (await _db.Users.AnyAsync(u => u.Email == dto.Email))
-                return Conflict("Email already registered.");
+            try
+            {
+                if (await _db.Users.AnyAsync(u => u.Email == dto.Email))
+                    return Conflict("Email already registered.");
 
-            await _otp.SendOtpAsync(dto.Email, "register");
-            return Ok("OTP sent to your email.");
+                await _otp.SendOtpAsync(dto.Email, "register");
+                return Ok("OTP sent to your email.");
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "Something went wrong while sending OTP.");
+            }
         }
 
         // 2. Register — verify OTP + set password
         [HttpPost("register/verify")]
         public async Task<IActionResult> RegisterVerify(RegisterDTO dto)
         {
-            if (!await _otp.ValidateOtpAsync(dto.Email, dto.Otp, "register"))
-                return BadRequest("Invalid or expired OTP.");
-
-            var user = new User
+            try
             {
-                Email = dto.Email,
-                PasswordHash = _hash.Hash(dto.Password),
-                Name = dto.Name
-            };
+                if (!await _otp.ValidateOtpAsync(dto.Email, dto.Otp, "register"))
+                    return BadRequest("Invalid or expired OTP.");
 
-            _db.Users.Add(user);
-            await _db.SaveChangesAsync();
+                var user = new User
+                {
+                    Email = dto.Email,
+                    PasswordHash = _hash.Hash(dto.Password),
+                    Name = dto.Name
+                };
 
-            var refreshToken = _jwt.GenerateRefreshToken();
+                _db.Users.Add(user);
+                await _db.SaveChangesAsync();
 
-            // Save refresh token to DB
-            _db.RefreshTokens.Add(new RefreshToken
+                var refreshToken = _jwt.GenerateRefreshToken();
+
+                _db.RefreshTokens.Add(new RefreshToken
+                {
+                    UserId = user.Id,
+                    Token = refreshToken,
+                    ExpiresAt = DateTime.UtcNow.AddDays(7)
+                });
+
+                await _db.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    token = _jwt.GenerateToken(user.Email, "Customer"),
+                    refreshToken
+                });
+            }
+            catch (DbUpdateException)
             {
-                UserId = user.Id,
-                Token = refreshToken,
-                ExpiresAt = DateTime.UtcNow.AddDays(7)
-            });
-            await _db.SaveChangesAsync();
-
-            return Ok(new { token = _jwt.GenerateToken(user.Email,"Customer"),refreshToken });
+                return StatusCode(500, "Database error while registering user.");
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "Something went wrong during registration.");
+            }
         }
 
         // 3. Login with password
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto dto)
         {
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
-
-            if (user == null || !_hash.Verify(dto.Password, user.PasswordHash))
-                return Unauthorized("Invalid credentials.");
-
-            var present = _db.Users.Any(u => u.Email == dto.Email);
-            if (!present) { return Unauthorized("Email not verified."); }
-
-            var accessToken = _jwt.GenerateToken(user.Email,user.Role);
-            var refreshToken = _jwt.GenerateRefreshToken();
-
-            // Save refresh token to DB
-            _db.RefreshTokens.Add(new RefreshToken
+            try
             {
-                UserId = user.Id,
-                Token = refreshToken,
-                ExpiresAt = DateTime.UtcNow.AddDays(7)
-            });
-            await _db.SaveChangesAsync();
+                var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
 
-            return Ok(new { accessToken, refreshToken });
+                if (user == null || !_hash.Verify(dto.Password, user.PasswordHash))
+                    return Unauthorized("Invalid credentials.");
 
-            //return Ok(new { token = _jwt.GenerateToken(user) });
+                var accessToken = _jwt.GenerateToken(user.Email, user.Role);
+                var refreshToken = _jwt.GenerateRefreshToken();
+
+                _db.RefreshTokens.Add(new RefreshToken
+                {
+                    UserId = user.Id,
+                    Token = refreshToken,
+                    ExpiresAt = DateTime.UtcNow.AddDays(7)
+                });
+
+                await _db.SaveChangesAsync();
+
+                return Ok(new { accessToken, refreshToken });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "Login failed due to server error.");
+            }
+
         }
 
         // Passwordless login via OTP
         [HttpPost("login/send-otp")]
         public async Task<IActionResult> LoginSendOtp([FromBody] EmailDto dto)
         {
-            if (!await _db.Users.AnyAsync(u => u.Email == dto.Email))
-                return NotFound("User not found.");
+            try
+            {
+                if (!await _db.Users.AnyAsync(u => u.Email == dto.Email))
+                    return NotFound("User not found.");
 
-            await _otp.SendOtpAsync(dto.Email, "login");
-            return Ok("OTP sent.");
+                await _otp.SendOtpAsync(dto.Email, "login");
+                return Ok("OTP sent.");
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "Failed to send OTP.");
+            }
         }
 
         [HttpPost("login/verify-otp")]
         public async Task<IActionResult> LoginVerifyOtp([FromBody] OtpLoginDto dto)
         {
-            if (!await _otp.ValidateOtpAsync(dto.Email, dto.Otp, "login"))
-                return BadRequest("Invalid or expired OTP.");
+            try
+            {
+                if (!await _otp.ValidateOtpAsync(dto.Email, dto.Otp, "login"))
+                    return BadRequest("Invalid or expired OTP.");
 
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+                var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
 
-            var accessToken = _jwt.GenerateToken(user.Email,user.Role);
-            var refreshToken = _jwt.GenerateRefreshToken();
+                if (user == null)
+                    return NotFound("User not found.");
 
-            // Save refresh token to DB
-            _db.RefreshTokens.Add(new RefreshToken
-            {   
-                UserId = user.Id,
-                Token = refreshToken,
-                ExpiresAt = DateTime.UtcNow.AddDays(7)
-            });
-            await _db.SaveChangesAsync();
+                var accessToken = _jwt.GenerateToken(user.Email, user.Role);
+                var refreshToken = _jwt.GenerateRefreshToken();
 
-            return Ok(new { accessToken, refreshToken });
-            //return Ok(new { token = _jwt.GenerateToken(user!) });
+                _db.RefreshTokens.Add(new RefreshToken
+                {
+                    UserId = user.Id,
+                    Token = refreshToken,
+                    ExpiresAt = DateTime.UtcNow.AddDays(7)
+                });
+
+                await _db.SaveChangesAsync();
+
+                return Ok(new { accessToken, refreshToken });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "OTP login failed.");
+            }
         }
 
         
         [HttpPost("signup")]
         public async Task<IActionResult> Signup(SignupDto dto)
+        {
+            try
+            {
+                var exists = _db.Users.Any(x => x.Email == dto.Email);
+                if (exists)
+                    return BadRequest("User already exists");
+
+                var user = new User
+                {
+                    Name = dto.Name,
+                    Email = dto.Email,
+                    PasswordHash = _hash.Hash(dto.Password),
+                    Role = dto.Role
+                };
+
+                _db.Users.Add(user);
+                await _db.SaveChangesAsync();
+
+                return Ok("User created");
+            }
+            catch (DbUpdateException)
+            {
+                return StatusCode(500, "Database error while creating user.");
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "Signup failed.");
+            }
+        }
+
+        [HttpPost("memberlogin")]
+        public async Task<IActionResult> RegisteredLogin(LoginDto dto)
+        {
+            try
+            {
+                var user = await _db.Users.FirstOrDefaultAsync(x => x.Email == dto.Email);
+
+                if (user == null || !_hash.Verify(dto.Password, user.PasswordHash))
+                    return Unauthorized("Invalid credentials");
+
+                var accessToken = _jwt.GenerateToken(user.Email, user.Role);
+                var refreshToken = _jwt.GenerateRefreshToken();
+
+                _db.RefreshTokens.Add(new RefreshToken
+                {
+                    UserId = user.Id,
+                    Token = refreshToken,
+                    ExpiresAt = DateTime.UtcNow.AddDays(7)
+                });
+
+                await _db.SaveChangesAsync();
+
+                return Ok(new { accessToken, refreshToken });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "Login failed.");
+            }
+        }
+
+        [HttpPost("refresh")]
+        public async Task<IActionResult> Refresh([FromBody] RefreshDto dto)
+        {
+            try
+            {
+                var stored = await _db.RefreshTokens
+                    .Include(r => r.User)
+                    .FirstOrDefaultAsync(r =>
+                        r.Token == dto.RefreshToken &&
+                        !r.IsRevoked &&
+                        r.ExpiresAt > DateTime.UtcNow);
+
+                if (stored == null)
+                    return Unauthorized("Invalid or expired refresh token.");
+
+                stored.IsRevoked = true;
+
+                var newAccessToken = _jwt.GenerateToken(stored.User.Email, stored.User.Role);
+                var newRefreshToken = _jwt.GenerateRefreshToken();
+
+                _db.RefreshTokens.Add(new RefreshToken
+                {
+                    UserId = stored.UserId,
+                    Token = newRefreshToken,
+                    ExpiresAt = DateTime.UtcNow.AddDays(7)
+                });
+
+                await _db.SaveChangesAsync();
+
+                return Ok(new { accessToken = newAccessToken, refreshToken = newRefreshToken });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "Token refresh failed.");
+            }
+        }
+
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout([FromBody] RefreshDto dto)
+        {
+            try
+            {
+                var token = await _db.RefreshTokens
+                    .FirstOrDefaultAsync(r => r.Token == dto.RefreshToken);
+
+                if (token != null)
+                {
+                    token.IsRevoked = true;
+                    await _db.SaveChangesAsync();
+                }
+
+                return Ok("Logged out.");
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "Logout failed.");
+            }
+        }
+        [HttpPost("password/reset/send-otp")]
+        public async Task<IActionResult> SendResetOtp([FromBody] EmailDto dto)
+        {
+            try
+            {
+                var userExists = await _db.Users.AnyAsync(u => u.Email == dto.Email);
+                if (!userExists)
+                    return NotFound("User not found.");
+
+                await _otp.SendOtpAsync(dto.Email, "reset-password");
+
+                return Ok("OTP sent for password reset.");
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "Failed to send reset OTP.");
+            }
+        }
+
+        [HttpPost("password/reset/verify")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
+        {
+            try
+            {
+                var isValid = await _otp.ValidateOtpAsync(dto.Email, dto.Otp, "reset-password");
+
+                if (!isValid)
+                    return BadRequest("Invalid or expired OTP.");
+
+                var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+
+                if (user == null)
+                    return NotFound("User not found.");
+
+                // Update password
+                user.PasswordHash = _hash.Hash(dto.NewPassword);
+
+                // revoke all existing refresh tokens
+                var tokens = _db.RefreshTokens.Where(t => t.UserId == user.Id && !t.IsRevoked);
+                foreach (var t in tokens)
+                    t.IsRevoked = true;
+
+                await _db.SaveChangesAsync();
+
+                return Ok("Password reset successful.");
+            }
+            catch (DbUpdateException)
+            {
+                return StatusCode(500, "Database error while resetting password.");
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "Password reset failed.");
+            }
+        }
+
+        [HttpPost("signup/associates")]
+        public async Task<IActionResult> SignupForAssociates(SignupDto dto)
         {
             var exists = _db.Users.Any(x => x.Email == dto.Email);
             if (exists)
@@ -152,78 +369,11 @@ namespace AuthService.Controllers
 
             return Ok("User created");
         }
-
-        [HttpPost("memberlogin")]
-        public async Task<IActionResult> LoginForAssociates(LoginDto dto)
-        {
-            var user = await _db.Users.FirstOrDefaultAsync(x => x.Email == dto.Email);
-
-            if (user == null || !_hash.Verify(dto.Password, user.PasswordHash))
-                return Unauthorized("Invalid credentials");
-
-
-            var accessToken = _jwt.GenerateToken(user.Email, user.Role);
-            var refreshToken = _jwt.GenerateRefreshToken();
-
-            // Save refresh token to DB
-            _db.RefreshTokens.Add(new RefreshToken
-            {
-                UserId = user.Id,
-                Token = refreshToken,
-                ExpiresAt = DateTime.UtcNow.AddDays(7)
-            });
-            await _db.SaveChangesAsync();
-
-            return Ok(new { accessToken, refreshToken });
-        }
-
-        [HttpPost("refresh")]
-        public async Task<IActionResult> Refresh([FromBody] RefreshDto dto)
-        {
-            var stored = await _db.RefreshTokens
-                .Include(r => r.User).FirstOrDefaultAsync(r => r.Token == dto.RefreshToken && !r.IsRevoked && r.ExpiresAt > DateTime.UtcNow);
-
-            if (stored == null)
-                return Unauthorized("Invalid or expired refresh token.");
-
-            // Rotate — invalidate old, issue new
-            stored.IsRevoked = true;
-
-            var newAccessToken = _jwt.GenerateToken(stored.User.Email, stored.User.Role);
-            var newRefreshToken = _jwt.GenerateRefreshToken();
-
-            _db.RefreshTokens.Add(new RefreshToken
-            {
-                UserId = stored.UserId,
-                Token = newRefreshToken,
-                ExpiresAt = DateTime.UtcNow.AddDays(7)
-            });
-
-            await _db.SaveChangesAsync();
-
-            return Ok(new { accessToken = newAccessToken, refreshToken = newRefreshToken });
-        }
-
-        [HttpPost("logout")]
-        public async Task<IActionResult> Logout([FromBody] RefreshDto dto)
-        {
-            var token = await _db.RefreshTokens
-                .FirstOrDefaultAsync(r => r.Token == dto.RefreshToken);
-
-            if (token != null)
-            {
-                token.IsRevoked = true;
-                await _db.SaveChangesAsync();
-            }
-
-            return Ok("Logged out.");
-        }
-
-
     }
 
     public record RefreshDto(string RefreshToken);
     public record EmailDto(string Email);
     public record LoginDto(string Email, string Password);
     public record OtpLoginDto(string Email, string Otp);
+    public record ResetPasswordDto(string Email, string Otp, string NewPassword);
 }

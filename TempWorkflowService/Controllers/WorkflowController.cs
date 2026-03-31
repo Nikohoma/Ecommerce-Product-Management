@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Shared.Contracts;
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 using WorkflowServices.Services;
 
 namespace WorkflowService.Controllers
@@ -20,20 +21,21 @@ namespace WorkflowService.Controllers
         [HttpPost]
         public async Task<IActionResult> SetStatus(int productId,string status)
         {
+            var name = User.Identity?.Name?? "System";
+
             Console.WriteLine("Controller HIT");
             if (status.ToLower().Trim() == "submit")
             {
-                await _service.Submit(productId);
+                await _service.Submit(productId,name);
                 return Ok();
             }
             else if(status.ToLower().Trim() == "approve")
             {
-                await _service.Approve(productId); return Ok();
+                await _service.Approve(productId,name); return Ok();
             }
             else if (status.ToLower().Trim() == "reject")
             {
-                Console.WriteLine("Calling service...");
-                await _service.Reject(productId);return Ok();
+                await _service.Reject(productId, name);return Ok();
             }
             return BadRequest();
         }

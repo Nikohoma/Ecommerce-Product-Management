@@ -1,13 +1,18 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
+using System.Security.Claims;
 using System.Text;
+using WorkflowService.Data;
 using WorkflowServices.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddScoped<WorkflowServices.Services.WorkflowService>();
 builder.Services.AddScoped<Publisher>();
+
+builder.Services.AddDbContext<WorkflowDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("WorkflowDb")));
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 .AddJwtBearer(options =>

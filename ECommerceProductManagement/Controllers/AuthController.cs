@@ -22,26 +22,26 @@ public class AuthController : ControllerBase
         _jwt = jwt;
     }
 
-    [HttpPost("signup")]
-    public async Task<IActionResult> Signup(SignupDto dto)
-    {
-        var exists = _context.Users.Any(x => x.Email == dto.Email);
-        if (exists)
-            return BadRequest("User already exists");
+    //[HttpPost("signup")]
+    //public async Task<IActionResult> Signup(SignupDto dto)
+    //{
+    //    var exists = _context.Users.Any(x => x.Email == dto.Email);
+    //    if (exists)
+    //        return BadRequest("User already exists");
 
-        var user = new User
-        {
-            Name = dto.Name,
-            Email = dto.Email,
-            PasswordHash = _hasher.Hash(dto.Password),
-            Role = dto.Role
-        };
+    //    var user = new User
+    //    {
+    //        Name = dto.Name,
+    //        Email = dto.Email,
+    //        PasswordHash = _hasher.Hash(dto.Password),
+    //        Role = dto.Role
+    //    };
 
-        _context.Users.Add(user);
-        await _context.SaveChangesAsync();
+    //    _context.Users.Add(user);
+    //    await _context.SaveChangesAsync();
 
-        return Ok("User created");
-    }
+    //    return Ok("User created");
+    //}
 
     [HttpPost("login")]
     public async Task<IActionResult> Login(LoginDto dto)

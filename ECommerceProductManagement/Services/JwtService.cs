@@ -50,12 +50,13 @@ public class JwtService
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyStr));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            var expiryHours = _config.GetValue<int>("Jwt:Expiry");
 
             var token = new JwtSecurityToken(
                 issuer: issuer,
                 audience: null,
                 claims: claims,
-                expires: DateTime.UtcNow.AddHours(2),
+                expires: DateTime.UtcNow.AddHours(expiryHours),
                 signingCredentials: creds
             );
 

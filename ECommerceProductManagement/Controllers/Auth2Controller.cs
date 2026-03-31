@@ -3,6 +3,7 @@ using Auth.Services;
 using ECommerceProductManagement.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 
 namespace AuthService.Controllers
 {
@@ -270,9 +271,9 @@ namespace AuthService.Controllers
     }
 
     public record RefreshDto(string RefreshToken);
-    public record EmailDto(string Email);
-    public record LoginDto(string Email, string Password);
-    public record OtpLoginDto(string Email, string Otp);
-    public record ResetPasswordDto(string Email, string Otp, string NewPassword);
-    public record RegisterCustomer(string Name, string Email, string Otp, string Password);
+    public record EmailDto([EmailAddress] string Email);
+    public record LoginDto([EmailAddress] string Email, [MinLength(3)] string Password);
+    public record OtpLoginDto([EmailAddress] string Email, [Range(1000000, 10000000)]string Otp);
+    public record ResetPasswordDto([EmailAddress] string Email, [Range(1000000, 10000000)] string Otp, [MinLength(3)] string NewPassword);
+    public record RegisterCustomer([MinLength(3)] string Name, [EmailAddress] string Email, [Range(1000000, 10000000)] string Otp, [MinLength(3)] string Password);
 }

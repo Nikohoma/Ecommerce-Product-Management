@@ -1,6 +1,0 @@
-@ProductWorkflowService_HostAddress = http://localhost:5117
-
-GET {{ProductWorkflowService_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

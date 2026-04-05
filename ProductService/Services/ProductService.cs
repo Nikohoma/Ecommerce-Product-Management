@@ -53,25 +53,7 @@ namespace CatalogService.Services
             return result;
         }
 
-        //public async Task UpdateProduct(int id, ProductCreateDto updatedProduct)
-        //{
-        //    if (!await _context.Categories.AnyAsync(c => c.Id == updatedProduct.CategoryId))
-        //    {
-        //        throw new Exception("Invalid CategoryId");
-        //    }
-        //    var newProduct = new Product()
-        //    {
-        //        Name = updatedProduct.Name,
-        //        Description = updatedProduct.Description,
-        //        Price = updatedProduct.Price,
-        //        AvailableQuantity = updatedProduct.Stock,
-        //        CategoryId = updatedProduct.CategoryId
-        //    };
-
-        //    await _repo.UpdateProductAsync(id, newProduct);
-        //    Console.WriteLine("Product updated successfully.");
-        //}
-
+        
         public async Task<Product> SearchProduct(string name)
         {
             var find = await _repo.SearchProductAsync(name);

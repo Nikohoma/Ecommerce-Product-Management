@@ -1,8 +1,10 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using CatalogService.Exceptions;
+using Microsoft.EntityFrameworkCore;
 using CatalogService.Data;
 using CatalogService.Models;
 using CatalogService.Services.Messaging;
 using Shared.Contracts;
+using Microsoft.AspNetCore.Authorization;
 
 namespace CatalogService.Repositories
 {
@@ -10,277 +12,541 @@ namespace CatalogService.Repositories
     {
         private readonly ProductDbContext _context;
         private readonly PublisherForReport _publish;
-        public ProductRepository(ProductDbContext context, PublisherForReport publish)
+        private readonly ILogger<ProductRepository> _logger;
+
+        public ProductRepository(ProductDbContext context, PublisherForReport publish, ILogger<ProductRepository> logger)
         {
             _context = context;
             _publish = publish;
+            _logger = logger;
         }
-        // CRUD + Search + Filter
+
+        private async Task<Product> GetProductOrThrowAsync(int productId)
+        {
+            var product = await _context.Products.FindAsync(productId);
+            if (product is null)
+            {
+                _logger.LogWarning("Product {ProductId} not found.", productId);
+                Console.WriteLine("Product not found"); return default;
+            }
+            return product;
+        }
+
+        private async Task<ProductVariant> GetVariantOrThrowAsync(int variantId)
+        {
+            var variant = await _context.ProductVariants.FindAsync(variantId);
+            if (variant is null)
+            {
+                _logger.LogWarning("Variant {VariantId} not found.", variantId);
+                Console.WriteLine("Variant not found."); return default;
+            }
+            return variant;
+        }
+
+        private async Task PublishStatusEventAsync(Product product)
+        {
+            await _publish.SendProductForReporting(new ProductStatusChangedEvent
+            {
+                ProductId = product.Id,
+                Status = product.Status.ToString(),
+                UpdatedAt = DateTime.UtcNow,
+                Price = product.Price
+            });
+        }
+
+        // CRUD + Search + Filter 
+
         public async Task CreateProductAsync(Product product)
         {
-            if (product == null) { return; }
-            var ifPresent = await _context.Products.AnyAsync(p => p.Id == product.Id);
-            if (ifPresent) { Console.WriteLine("Product already present"); return; }
-            _context.Products.Add(product);
-            await _context.SaveChangesAsync();
+            if (product is null)
+            {
+                _logger.LogWarning("CreateProductAsync called with null product.");
+                return;
+            }
 
-            ProductStatusChangedEvent sendProduct = new ProductStatusChangedEvent() { ProductId = product.Id, Status = product.Status.ToString(), UpdatedAt = DateTime.UtcNow, Price = product.Price };
-            await _publish.SendProductForReporting(sendProduct);
+            try
+            {
+                if (await _context.Products.AnyAsync(p => p.Id == product.Id))
+                {
+                    _logger.LogWarning("Product {ProductId} already exists.", product.Id);
+                    Console.WriteLine("Product already exists."); return ;
+                }
+
+                _context.Products.Add(product);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Product {ProductId} created.", product.Id);
+
+                await PublishStatusEventAsync(product);
+            }
+            catch (CatalogException) { return; }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError(ex, "DB error creating product {ProductId}.", product.Id);
+                Console.WriteLine("Db Update Exception Occured",ex.Message); return;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error creating product {ProductId}.", product.Id);
+                Console.WriteLine("An Error Occured", ex.Message); return;
+            }
         }
 
         public async Task<List<Product>> GetAllProductsAsync()
         {
-            var products = await _context.Products.Include(p => p.Category).Include(p => p.Variants).ToListAsync();
+            try
+            {
+                var products = await _context.Products.Include(p => p.Category).Include(p => p.Variants).ToListAsync();
 
-            return products ?? new List<Product>();
+                _logger.LogInformation("Retrieved {Count} products.", products.Count);
+                return products;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving all products.");
+                Console.WriteLine("An error occured : "+ex.Message);
+                return default;
+            }
         }
 
         public async Task<Product> GetProductDetailsAsync(int id)
         {
-            var product = await _context.Products.Include(p => p.Category).Include(p => p.Variants).FirstOrDefaultAsync(p => p.Id == id);
-
-            if (product == null)
+            try
             {
-                Console.WriteLine("No Product Found");
+                var product = await _context.Products
+                    .Include(p => p.Category)
+                    .Include(p => p.Variants)
+                    .FirstOrDefaultAsync(p => p.Id == id);
+
+                if (product is null)
+                {
+                    _logger.LogWarning("Product {ProductId} not found : ", id);
+                    throw new ProductNotFoundException(id);
+                }
+
+                return product;
+            }
+            catch (CatalogException) { throw; }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving product {ProductId}.", id);
+                Console.WriteLine("Error retrieving product : " + ex.Message);
                 return default;
             }
-
-            return product;
         }
 
         public async Task UpdateProductAsync(int id, Product updatedProduct)
         {
-            var product = await _context.Products.FindAsync(id);
-            if (product == null) { Console.WriteLine("Product not found"); return; }
-
-            // Only draft products can have full updates
-            if (product.Status != ProductStatus.Draft)
+            try
             {
-                throw new Exception("Only draft products can be fully updated");
+                var product = await GetProductOrThrowAsync(id);
+
+                if (product.Status != ProductStatus.Draft)
+                {
+                    _logger.LogWarning("UpdateProductAsync: Invalid status {Status} for product {ProductId}.", product.Status, id);
+                    //throw new InvalidProductStatusTransitionException(product.Status, ProductStatus.Draft, "FullUpdate");
+                    Console.WriteLine("Invalid Status.");
+                }
+
+                product.Name = updatedProduct.Name;
+                product.Description = updatedProduct.Description;
+                product.Price = updatedProduct.Price;
+                product.AvailableQuantity = updatedProduct.AvailableQuantity;
+                product.CategoryId = updatedProduct.CategoryId;
+
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Product {ProductId} updated.", id);
+                await PublishStatusEventAsync(product);
             }
-
-            product.Name = updatedProduct.Name;
-            product.Description = updatedProduct.Description;
-            product.Price = updatedProduct.Price;
-            product.AvailableQuantity = updatedProduct.AvailableQuantity;
-            product.CategoryId = updatedProduct.CategoryId;
-
-            await _context.SaveChangesAsync();
-            ProductStatusChangedEvent sendProduct = new ProductStatusChangedEvent() { ProductId = product.Id, Status = product.Status.ToString(), UpdatedAt = DateTime.UtcNow, Price = product.Price };
-            await _publish.SendProductForReporting(sendProduct);
+            catch (CatalogException) { throw; }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError(ex, "DB error updating product {ProductId}.", id);
+                Console.WriteLine("Db Update Exception : ",ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error updating product {ProductId}.", id);
+                Console.WriteLine("An Error Occured : ",ex.Message); return;
+            }
         }
 
         public async Task<Product> SearchProductAsync(string name)
         {
-            var find = await _context.Products.Where(p => p.Name.ToLower().Contains(name.ToLower()) && (p.Status != ProductStatus.Draft || p.Status != ProductStatus.Inactive)).FirstOrDefaultAsync();
-            if (find != null) { return find; }
-            Console.WriteLine("No Product found.");
-            return default;
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                _logger.LogWarning("SearchProductAsync called with empty name.");
+                return default;
+            }
+
+            try
+            {
+                var product = await _context.Products.Where(p => p.Name.ToLower().Contains(name.ToLower())&& p.Status != ProductStatus.Draft&& p.Status != ProductStatus.Inactive).FirstOrDefaultAsync();
+
+                if (product is null)
+                    _logger.LogWarning("No product found matching '{Name}'.", name);
+
+                return product;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error searching product by name '{Name}'.", name);
+                Console.WriteLine("Error encountered : ",ex.Message); return default;
+            }
         }
 
         public async Task<List<Product>> GetProductsByCategoryAsync(int categoryId)
         {
-            return await _context.Products
-                .Where(p => p.CategoryId == categoryId && (p.Status != ProductStatus.Draft || p.Status != ProductStatus.Inactive))
-                .Include(p => p.Category)
-                .ToListAsync();
+            try
+            {
+                var products = await _context.Products.Where(p => p.CategoryId == categoryId&& p.Status != ProductStatus.Draft&& p.Status != ProductStatus.Inactive).Include(p => p.Category).ToListAsync();
+
+                _logger.LogInformation("Retrieved {Count} products for category {CategoryId}.", products.Count, categoryId);
+                return products;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving products for category {CategoryId}.", categoryId);
+                Console.WriteLine("Error encountered : ",ex.Message); return default;
+            }
         }
 
-        // Product Lifecycle
+        // ─── Product Lifecycle ─────────────────────────────────────────────────────
+
         public async Task SubmitProduct(int productId)
         {
-            var product = await _context.Products.FindAsync(productId);
+            try
+            {
+                var product = await GetProductOrThrowAsync(productId);
 
-            if (product.Status != ProductStatus.Draft)
-                throw new Exception("Only draft products can be submitted");
+                if (product.Status != ProductStatus.Draft)
+                    throw new InvalidProductStatusTransitionException(product.Status, ProductStatus.Draft, "Submit");
 
-            product.Status = ProductStatus.Submitted;
-            await _context.SaveChangesAsync();
-            ProductStatusChangedEvent sendProduct = new ProductStatusChangedEvent() { ProductId = product.Id, Status = product.Status.ToString(), UpdatedAt = DateTime.UtcNow, Price = product.Price };
-            await _publish.SendProductForReporting(sendProduct);
+                product.Status = ProductStatus.Submitted;
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Product {ProductId} submitted.", productId);
+                await PublishStatusEventAsync(product);
+            }
+            catch (CatalogException) { throw; }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error submitting product {ProductId}.", productId);
+                Console.WriteLine("Error encountered : ", ex.Message); return ;
+
+            }
         }
+
         public async Task ApproveProductAsync(int productId)
         {
-            var product = await _context.Products.FindAsync(productId);
-            if (product == null) throw new Exception("Product not found");
+            try
+            {
+                var product = await GetProductOrThrowAsync(productId);
 
-            if (product.Status != ProductStatus.Submitted)
-                throw new Exception("Only submitted products can be approved");
+                if (product.Status != ProductStatus.Submitted)
+                    throw new InvalidProductStatusTransitionException(product.Status, ProductStatus.Submitted, "Approve");
 
-            product.Status = ProductStatus.Active;
+                product.Status = ProductStatus.Active;
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Product {ProductId} approved.", productId);
+                await PublishStatusEventAsync(product);
+            }
+            catch (CatalogException) { throw; }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error approving product {ProductId}.", productId);
+                Console.WriteLine("Error encountered : ", ex.Message); return ;
 
-            await _context.SaveChangesAsync();
-            ProductStatusChangedEvent sendProduct = new ProductStatusChangedEvent() { ProductId = product.Id, Status = product.Status.ToString(), UpdatedAt = DateTime.UtcNow, Price = product.Price };
-            await _publish.SendProductForReporting(sendProduct);
+            }
         }
 
         public async Task RejectProductAsync(int productId)
         {
-            var product = await _context.Products.FindAsync(productId);
-            if (product == null) throw new Exception("Product not found");
+            try
+            {
+                var product = await GetProductOrThrowAsync(productId);
 
-            if (product.Status != ProductStatus.Submitted)
-                throw new Exception("Only submitted products can be rejected");
+                if (product.Status != ProductStatus.Submitted)
+                    throw new InvalidProductStatusTransitionException(product.Status, ProductStatus.Submitted, "Reject");
 
-            product.Status = ProductStatus.Rejected;
-            await _context.SaveChangesAsync();
-            ProductStatusChangedEvent sendProduct = new ProductStatusChangedEvent() { ProductId = product.Id, Status = product.Status.ToString(), UpdatedAt = DateTime.UtcNow, Price = product.Price };
-            await _publish.SendProductForReporting(sendProduct);
+                product.Status = ProductStatus.Rejected;
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Product {ProductId} rejected.", productId);
+                await PublishStatusEventAsync(product);
+            }
+            catch (CatalogException) { throw; }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error rejecting product {ProductId}.", productId);
+                Console.WriteLine("Error encountered : ", ex.Message); return ;
+
+            }
         }
 
-        // Restricted Updates
+        // ─── Restricted Updates ────────────────────────────────────────────────────
+
         public async Task UpdatePriceAsync(int productId, decimal newPrice)
         {
-            var product = await _context.Products.FindAsync(productId);
-            if (product == null) throw new Exception("Product not found");
+            try
+            {
+                var product = await GetProductOrThrowAsync(productId);
 
-            if (product.Status != ProductStatus.Active)
-                throw new Exception("Only active products can update price");
+                if (product.Status != ProductStatus.Active)
+                    throw new InvalidProductStatusTransitionException(product.Status, ProductStatus.Active, "UpdatePrice");
 
-            product.Price = newPrice;
-            await _context.SaveChangesAsync();
-            ProductStatusChangedEvent sendProduct = new ProductStatusChangedEvent() { ProductId = product.Id, Status = product.Status.ToString(), UpdatedAt = DateTime.UtcNow, Price = product.Price };
-            await _publish.SendProductForReporting(sendProduct);
+                product.Price = newPrice;
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Price updated for product {ProductId} → {Price}.", productId, newPrice);
+                await PublishStatusEventAsync(product);
+            }
+            catch (CatalogException) { throw; }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error updating price for product {ProductId}.", productId);
+                Console.WriteLine("Error encountered : ", ex.Message); return;
+
+            }
         }
 
         public async Task UpdateStockAsync(int productId, int quantity)
         {
-            var product = await _context.Products.FindAsync(productId);
-            if (product == null) throw new Exception("Product not found");
-            if (quantity < 0) throw new Exception("Stock cannot be negative");
+            if (quantity < 0)
+                throw new NegativeStockException();
 
-            product.AvailableQuantity = quantity;
-            await _context.SaveChangesAsync();
+            try
+            {
+                var product = await GetProductOrThrowAsync(productId);
+                product.AvailableQuantity = quantity;
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Stock updated for product {ProductId} → {Quantity}.", productId, quantity);
+            }
+            catch (CatalogException) { throw; }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error updating stock for product {ProductId}.", productId);
+                Console.WriteLine("Error encountered : ", ex.Message); return ;
+
+            }
         }
 
         public async Task DeleteProductAsync(int productId)
         {
-            var product = await _context.Products.FindAsync(productId);
-            if (product == null) return;
+            try
+            {
+                var product = await GetProductOrThrowAsync(productId);
+                product.Status = ProductStatus.Inactive;
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Product {ProductId} soft-deleted.", productId);
+                await PublishStatusEventAsync(product);
+            }
+            catch (CatalogException) { throw; }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error deleting product {ProductId}.", productId);
+                Console.WriteLine("Error encountered : ", ex.Message); return ;
 
-            // Soft delete
-            product.Status = ProductStatus.Inactive;
-            await _context.SaveChangesAsync();
-            ProductStatusChangedEvent sendProduct = new ProductStatusChangedEvent() { ProductId = product.Id, Status = product.Status.ToString(), UpdatedAt = DateTime.UtcNow, Price = product.Price };
-            await _publish.SendProductForReporting(sendProduct);
+            }
         }
 
         public async Task<bool> DeductStockAsync(int productId, int quantity)
         {
-            var product = await _context.Products.FindAsync(productId);
-            if (product == null) throw new Exception("Product not found");
+            try
+            {
+                var product = await GetProductOrThrowAsync(productId);
 
-            if (product.AvailableQuantity < quantity)
-                return false; // Not enough stock
+                if (product.AvailableQuantity < quantity)
+                    throw new InsufficientStockException(product.AvailableQuantity, quantity);
 
-            product.AvailableQuantity -= quantity;
-            await _context.SaveChangesAsync();
-            return true;
+                product.AvailableQuantity -= quantity;
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Deducted {Quantity} from product {ProductId}. Remaining: {Remaining}.",
+                    quantity, productId, product.AvailableQuantity);
+                return true;
+            }
+            catch (CatalogException) { return default; }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error deducting stock for product {ProductId}.", productId);
+                Console.WriteLine("Error encountered : ", ex.Message); return default;
+
+            }
         }
 
+        // ─── Variant Methods 
 
-        // ----------------- Variant Methods -----------------
-
-        // Create a new variant
         public async Task CreateVariantAsync(ProductVariant variant)
         {
-            if (variant == null) return;
+            if (variant is null)
+            {
+                _logger.LogWarning("CreateVariantAsync called with null variant.");
+                return;
+            }
 
-            var productExists = await _context.Products
-                .AnyAsync(p => p.Id == variant.ProductId);
+            try
+            {
+                if (!await _context.Products.AnyAsync(p => p.Id == variant.ProductId)) { Console.WriteLine("Product Not found."); return; }
 
-            if (!productExists)
-                throw new Exception("Parent product does not exist");
+                if (await _context.ProductVariants.AnyAsync(v => v.ProductId == variant.ProductId && v.SKU == variant.SKU)) { Console.WriteLine("Product Not found."); return; }
+               
 
-            var variantExists = await _context.ProductVariants
-                .AnyAsync(v => v.ProductId == variant.ProductId && v.SKU == variant.SKU);
-
-            if (variantExists)
-                throw new Exception("Variant with same SKU already exists for this product");
-
-            _context.ProductVariants.Add(variant);
-            await _context.SaveChangesAsync();
+                _context.ProductVariants.Add(variant);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Variant {VariantId} (SKU: {SKU}) created for product {ProductId}.",
+                    variant.Id, variant.SKU, variant.ProductId);
+            }
+            catch (CatalogException) { throw; }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError(ex, "DB error creating variant for product {ProductId}.", variant.ProductId);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error creating variant for product {ProductId}.", variant.ProductId);
+                throw;
+            }
         }
 
-        // Get all variants for a product
         public async Task<List<ProductVariant>> GetVariantsByProductAsync(int productId)
         {
-            return await _context.ProductVariants
-                .Where(v => v.ProductId == productId)
-                .Include(v => v.Product)
-                .ToListAsync();
+            try
+            {
+                var variants = await _context.ProductVariants
+                    .Where(v => v.ProductId == productId)
+                    .Include(v => v.Product)
+                    .ToListAsync();
+
+                _logger.LogInformation("Retrieved {Count} variants for product {ProductId}.", variants.Count, productId);
+                return variants;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving variants for product {ProductId}.", productId);
+                throw;
+            }
         }
 
-        // Get details of a single variant
         public async Task<ProductVariant> GetVariantDetailsAsync(int variantId)
         {
-            var variant = await _context.ProductVariants
-                .Include(v => v.Product)
-                .FirstOrDefaultAsync(v => v.Id == variantId);
+            try
+            {
+                var variant = await _context.ProductVariants
+                    .Include(v => v.Product)
+                    .FirstOrDefaultAsync(v => v.Id == variantId);
 
-            if (variant == null)
-                Console.WriteLine("Variant not found");
+                if (variant is null)
+                    throw new VariantNotFoundException(variantId);
 
-            return variant;
+                return variant;
+            }
+            catch (CatalogException) { throw; }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving variant {VariantId}.", variantId);
+                throw;
+            }
         }
 
-        // Update a variant (full update)
         public async Task UpdateVariantAsync(int variantId, ProductVariant updatedVariant)
         {
-            var variant = await _context.ProductVariants.FindAsync(variantId);
-            if (variant == null) throw new Exception("Variant not found");
+            try
+            {
+                var variant = await GetVariantOrThrowAsync(variantId);
 
-            variant.SKU = updatedVariant.SKU;
-            variant.Price = updatedVariant.Price;
-            variant.Stock = updatedVariant.Stock;
-            variant.Attributes = updatedVariant.Attributes;
+                variant.SKU = updatedVariant.SKU;
+                variant.Price = updatedVariant.Price;
+                variant.Stock = updatedVariant.Stock;
+                variant.Attributes = updatedVariant.Attributes;
 
-            await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Variant {VariantId} updated.", variantId);
+            }
+            catch (CatalogException) { throw; }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError(ex, "DB error updating variant {VariantId}.", variantId);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error updating variant {VariantId}.", variantId);
+                throw;
+            }
         }
 
-        // Update only price
         public async Task UpdateVariantPriceAsync(int variantId, decimal newPrice)
         {
-            var variant = await _context.ProductVariants.FindAsync(variantId);
-            if (variant == null) throw new Exception("Variant not found");
-
-            variant.Price = newPrice;
-            await _context.SaveChangesAsync();
+            try
+            {
+                var variant = await GetVariantOrThrowAsync(variantId);
+                variant.Price = newPrice;
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Price updated for variant {VariantId} → {Price}.", variantId, newPrice);
+            }
+            catch (CatalogException) { throw; }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error updating price for variant {VariantId}.", variantId);
+                throw;
+            }
         }
 
-        // Update only stock
         public async Task UpdateVariantStockAsync(int variantId, int quantity)
         {
-            var variant = await _context.ProductVariants.FindAsync(variantId);
-            if (variant == null) throw new Exception("Variant not found");
-            if (quantity < 0) throw new Exception("Stock cannot be negative");
+            if (quantity < 0)
+                throw new NegativeStockException();
 
-            variant.Stock = quantity;
-            await _context.SaveChangesAsync();
+            try
+            {
+                var variant = await GetVariantOrThrowAsync(variantId);
+                variant.Stock = quantity;
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Stock updated for variant {VariantId} → {Quantity}.", variantId, quantity);
+            }
+            catch (CatalogException) { throw; }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error updating stock for variant {VariantId}.", variantId);
+                throw;
+            }
         }
 
-        // Soft delete variant
         public async Task DeleteVariantAsync(int variantId)
         {
-            var variant = await _context.ProductVariants.FindAsync(variantId);
-            if (variant == null) return;
-
-            // Optional: set a Status field if you have one
-            _context.ProductVariants.Remove(variant); // or mark as inactive if soft-delete preferred
-            await _context.SaveChangesAsync();
+            try
+            {
+                var variant = await GetVariantOrThrowAsync(variantId);
+                _context.ProductVariants.Remove(variant);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Variant {VariantId} deleted.", variantId);
+            }
+            catch (CatalogException) { throw; }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error deleting variant {VariantId}.", variantId);
+                throw;
+            }
         }
 
-        // Deduct stock for variant
         public async Task<bool> DeductVariantStockAsync(int variantId, int quantity)
         {
-            var variant = await _context.ProductVariants.FindAsync(variantId);
-            if (variant == null) throw new Exception("Variant not found");
+            try
+            {
+                var variant = await GetVariantOrThrowAsync(variantId);
 
-            if (variant.Stock < quantity) return false;
+                if (variant.Stock < quantity)
+                    throw new InsufficientStockException(variant.Stock, quantity);
 
-            variant.Stock -= quantity;
-            await _context.SaveChangesAsync();
-            return true;
+                variant.Stock -= quantity;
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Deducted {Quantity} from variant {VariantId}. Remaining: {Remaining}.",
+                    quantity, variantId, variant.Stock);
+                return true;
+            }
+            catch (CatalogException) { throw; }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error deducting stock for variant {VariantId}.", variantId);
+                throw;
+            }
         }
     }
 }

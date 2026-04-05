@@ -17,6 +17,7 @@ var logger = LogManager.Setup().LoadConfigurationFromAppSettings().GetCurrentCla
 
 
 var builder = WebApplication.CreateBuilder(args);
+//builder.Configuration.AddJsonFile("appsettings.json", optional: false).AddUserSecrets<Program>().AddEnvironmentVariables();
 builder.Logging.ClearProviders();
 builder.Host.UseNLog();
 // Add services to the container.

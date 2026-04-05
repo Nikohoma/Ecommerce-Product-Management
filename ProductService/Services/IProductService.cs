@@ -35,7 +35,7 @@ namespace CatalogService.Services
         Task UpdateStock(int productId, int quantity);        // Active only
 
         // Optional for order integration
-        Task<bool> DeductStock(int productId, int quantity);
+        Task DeductStock(int productId, int quantity);
 
         // Variant 
         Task CreateVariant(ProductVariantCreateDto variantDto);
@@ -45,7 +45,7 @@ namespace CatalogService.Services
         Task UpdateVariantPrice(int variantId, decimal newPrice);
         Task UpdateVariantStock(int variantId, int newStock);
         Task DeleteVariant(int variantId);
-        Task<bool> DeductVariantStock(int variantId, int quantity);
+        Task DeductVariantStock(int variantId, int quantity);
 
     }
 }

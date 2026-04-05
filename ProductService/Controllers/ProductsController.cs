@@ -130,11 +130,8 @@ public class ProductsController : ControllerBase
     [Authorize(Roles = "OrderService")]
     public async Task<IActionResult> DeductStock(int id, [FromQuery] int quantity)
     {
-        var success = await _service.DeductStock(id, quantity);
-        if (!success)
-            return BadRequest("Insufficient stock");
-
-        return Ok($"Deducted {quantity} units from product {id}");
+        await _service.DeductStock(id, quantity);
+        return Ok($"Deducted {quantity} units from product {id}.");
     }
 
     //[ApiExplorerSettings(IgnoreApi = true)]

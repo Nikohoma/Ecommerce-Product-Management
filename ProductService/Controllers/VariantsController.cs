@@ -79,13 +79,9 @@ public class VariantsController : ControllerBase
     // Deduct stock (for Order Service)
     [Authorize(Roles = "OrderService")]
     [HttpPost("{variantId}/deduct-stock")]
-    public async Task<IActionResult> DeductStock(int variantId, [FromQuery] int quantity)
+    public async Task<IActionResult> DeductVariantStock(int variantId, [FromQuery] int quantity)
     {
-        var success = await _service.DeductVariantStock(variantId, quantity);
-
-        if (!success)
-            return BadRequest("Insufficient stock");
-
-        return Ok($"Deducted {quantity} units from variant {variantId}");
+        await _service.DeductVariantStock(variantId, quantity);
+        return Ok($"Deducted {quantity} units from variant {variantId}.");
     }
 }   

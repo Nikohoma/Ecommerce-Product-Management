@@ -24,6 +24,11 @@ namespace CatalogService.Exceptions
             : base("VARIANT_NOT_FOUND", $"Variant {variantId} was not found.")
             => VariantId = variantId;
     }
+    public class CategoryNotFoundException : CatalogException
+    {
+        public int CategoryId { get; }
+        public CategoryNotFoundException(int categoryId) : base("CATEGORY_NOT_FOUND", $"Category {categoryId} was not found.") => CategoryId = categoryId;
+    }
 
     // 409
     public class ProductAlreadyExistsException : CatalogException
@@ -67,4 +72,5 @@ namespace CatalogService.Exceptions
         public int Requested { get; }
         public InsufficientStockException(int available, int requested): base("INSUFFICIENT_STOCK",$"Insufficient stock. Available: {available}, Requested: {requested}.")=> (Available, Requested) = (available, requested);
     }
+    
 }

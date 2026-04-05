@@ -10,6 +10,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using NLog;
 using NLog.Web;
+using RabbitMQ.Client;
 using System.Text;
 
 
@@ -20,7 +21,14 @@ var builder = WebApplication.CreateBuilder(args);
 //builder.Configuration.AddJsonFile("appsettings.json", optional: false).AddUserSecrets<Program>().AddEnvironmentVariables();
 builder.Logging.ClearProviders();
 builder.Host.UseNLog();
-// Add services to the container.
+
+builder.Services.AddSingleton<IConnection>(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    var factory = new ConnectionFactory();
+    config.GetSection("RabbitMq").Bind(factory);
+    return factory.CreateConnectionAsync().GetAwaiter().GetResult();
+});
 builder.Services.AddScoped<PublisherForReport>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();

@@ -65,7 +65,6 @@ try
     app.UseMiddleware<RequestLoggingMiddleware>();
     app.UseAuthentication();
     app.UseAuthorization();
-
     app.UseSwaggerForOcelotUI(opt =>
     {
         opt.PathToSwaggerGenerator = "/swagger/docs";

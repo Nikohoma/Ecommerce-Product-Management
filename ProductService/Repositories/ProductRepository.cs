@@ -4,7 +4,6 @@ using CatalogService.Data;
 using CatalogService.Models;
 using CatalogService.Services.Messaging;
 using Shared.Contracts;
-using Microsoft.AspNetCore.Authorization;
 
 namespace CatalogService.Repositories
 {
@@ -21,13 +20,15 @@ namespace CatalogService.Repositories
             _logger = logger;
         }
 
+        // ─── Private Helpers ──────────────────────────────────────────────────────
+
         private async Task<Product> GetProductOrThrowAsync(int productId)
         {
             var product = await _context.Products.FindAsync(productId);
             if (product is null)
             {
                 _logger.LogWarning("Product {ProductId} not found.", productId);
-                Console.WriteLine("Product not found"); return default;
+                throw new ProductNotFoundException(productId);   // was: return default
             }
             return product;
         }
@@ -38,7 +39,7 @@ namespace CatalogService.Repositories
             if (variant is null)
             {
                 _logger.LogWarning("Variant {VariantId} not found.", variantId);
-                Console.WriteLine("Variant not found."); return default;
+                throw new VariantNotFoundException(variantId);   // was: return default
             }
             return variant;
         }
@@ -54,40 +55,39 @@ namespace CatalogService.Repositories
             });
         }
 
-        // CRUD + Search + Filter 
+        // ─── CRUD + Search + Filter ───────────────────────────────────────────────
 
         public async Task CreateProductAsync(Product product)
         {
             if (product is null)
             {
                 _logger.LogWarning("CreateProductAsync called with null product.");
-                return;
+                throw new ArgumentNullException(nameof(product));
+            }
+
+            if (await _context.Products.AnyAsync(p => p.Id == product.Id))
+            {
+                _logger.LogWarning("Product {ProductId} already exists.", product.Id);
+                throw new ProductAlreadyExistsException(product.Id);  // was: Console.WriteLine; return
             }
 
             try
             {
-                if (await _context.Products.AnyAsync(p => p.Id == product.Id))
-                {
-                    _logger.LogWarning("Product {ProductId} already exists.", product.Id);
-                    Console.WriteLine("Product already exists."); return ;
-                }
-
                 _context.Products.Add(product);
                 await _context.SaveChangesAsync();
                 _logger.LogInformation("Product {ProductId} created.", product.Id);
-
                 await PublishStatusEventAsync(product);
             }
-            catch (CatalogException) { return; }
+            catch (CatalogException) { throw; }  // was: swallowed
             catch (DbUpdateException ex)
             {
                 _logger.LogError(ex, "DB error creating product {ProductId}.", product.Id);
-                Console.WriteLine("Db Update Exception Occured",ex.Message); return;
+                throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error creating product {ProductId}.", product.Id);
-                Console.WriteLine("An Error Occured", ex.Message); return;
+                throw;
             }
         }
 
@@ -95,7 +95,10 @@ namespace CatalogService.Repositories
         {
             try
             {
-                var products = await _context.Products.Include(p => p.Category).Include(p => p.Variants).ToListAsync();
+                var products = await _context.Products
+                    .Include(p => p.Category)
+                    .Include(p => p.Variants)
+                    .ToListAsync();
 
                 _logger.LogInformation("Retrieved {Count} products.", products.Count);
                 return products;
@@ -103,8 +106,7 @@ namespace CatalogService.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving all products.");
-                Console.WriteLine("An error occured : "+ex.Message);
-                return default;
+                throw;  // was: return default
             }
         }
 
@@ -119,7 +121,7 @@ namespace CatalogService.Repositories
 
                 if (product is null)
                 {
-                    _logger.LogWarning("Product {ProductId} not found : ", id);
+                    _logger.LogWarning("Product {ProductId} not found.", id);
                     throw new ProductNotFoundException(id);
                 }
 
@@ -129,8 +131,7 @@ namespace CatalogService.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving product {ProductId}.", id);
-                Console.WriteLine("Error retrieving product : " + ex.Message);
-                return default;
+                throw;  // was: return default
             }
         }
 
@@ -142,9 +143,8 @@ namespace CatalogService.Repositories
 
                 if (product.Status != ProductStatus.Draft)
                 {
-                    _logger.LogWarning("UpdateProductAsync: Invalid status {Status} for product {ProductId}.", product.Status, id);
-                    //throw new InvalidProductStatusTransitionException(product.Status, ProductStatus.Draft, "FullUpdate");
-                    Console.WriteLine("Invalid Status.");
+                    _logger.LogWarning("UpdateProductAsync: invalid status {Status} for product {ProductId}.", product.Status, id);
+                    throw new InvalidProductStatusTransitionException(product.Status, ProductStatus.Draft, "FullUpdate");  // was: commented out
                 }
 
                 product.Name = updatedProduct.Name;
@@ -161,12 +161,12 @@ namespace CatalogService.Repositories
             catch (DbUpdateException ex)
             {
                 _logger.LogError(ex, "DB error updating product {ProductId}.", id);
-                Console.WriteLine("Db Update Exception : ",ex.Message);
+                throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error updating product {ProductId}.", id);
-                Console.WriteLine("An Error Occured : ",ex.Message); return;
+                throw;
             }
         }
 
@@ -175,12 +175,16 @@ namespace CatalogService.Repositories
             if (string.IsNullOrWhiteSpace(name))
             {
                 _logger.LogWarning("SearchProductAsync called with empty name.");
-                return default;
+                throw new ArgumentException("Search name cannot be empty.", nameof(name));
             }
 
             try
             {
-                var product = await _context.Products.Where(p => p.Name.ToLower().Contains(name.ToLower())&& p.Status != ProductStatus.Draft&& p.Status != ProductStatus.Inactive).FirstOrDefaultAsync();
+                var product = await _context.Products
+                    .Where(p => p.Name.ToLower().Contains(name.ToLower())
+                             && p.Status != ProductStatus.Draft
+                             && p.Status != ProductStatus.Inactive)
+                    .FirstOrDefaultAsync();
 
                 if (product is null)
                     _logger.LogWarning("No product found matching '{Name}'.", name);
@@ -190,7 +194,7 @@ namespace CatalogService.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error searching product by name '{Name}'.", name);
-                Console.WriteLine("Error encountered : ",ex.Message); return default;
+                throw;  // was: return default
             }
         }
 
@@ -198,7 +202,12 @@ namespace CatalogService.Repositories
         {
             try
             {
-                var products = await _context.Products.Where(p => p.CategoryId == categoryId&& p.Status != ProductStatus.Draft&& p.Status != ProductStatus.Inactive).Include(p => p.Category).ToListAsync();
+                var products = await _context.Products
+                    .Where(p => p.CategoryId == categoryId
+                             && p.Status != ProductStatus.Draft
+                             && p.Status != ProductStatus.Inactive)
+                    .Include(p => p.Category)
+                    .ToListAsync();
 
                 _logger.LogInformation("Retrieved {Count} products for category {CategoryId}.", products.Count, categoryId);
                 return products;
@@ -206,11 +215,11 @@ namespace CatalogService.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving products for category {CategoryId}.", categoryId);
-                Console.WriteLine("Error encountered : ",ex.Message); return default;
+                throw;  // was: return default
             }
         }
 
-        // ─── Product Lifecycle ─────────────────────────────────────────────────────
+        // ─── Product Lifecycle ────────────────────────────────────────────────────
 
         public async Task SubmitProduct(int productId)
         {
@@ -230,8 +239,7 @@ namespace CatalogService.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error submitting product {ProductId}.", productId);
-                Console.WriteLine("Error encountered : ", ex.Message); return ;
-
+                throw;
             }
         }
 
@@ -253,8 +261,7 @@ namespace CatalogService.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error approving product {ProductId}.", productId);
-                Console.WriteLine("Error encountered : ", ex.Message); return ;
-
+                throw;
             }
         }
 
@@ -276,12 +283,11 @@ namespace CatalogService.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error rejecting product {ProductId}.", productId);
-                Console.WriteLine("Error encountered : ", ex.Message); return ;
-
+                throw;
             }
         }
 
-        // ─── Restricted Updates ────────────────────────────────────────────────────
+        // ─── Restricted Updates ───────────────────────────────────────────────────
 
         public async Task UpdatePriceAsync(int productId, decimal newPrice)
         {
@@ -301,8 +307,7 @@ namespace CatalogService.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error updating price for product {ProductId}.", productId);
-                Console.WriteLine("Error encountered : ", ex.Message); return;
-
+                throw;
             }
         }
 
@@ -322,8 +327,7 @@ namespace CatalogService.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error updating stock for product {ProductId}.", productId);
-                Console.WriteLine("Error encountered : ", ex.Message); return ;
-
+                throw;
             }
         }
 
@@ -341,12 +345,11 @@ namespace CatalogService.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error deleting product {ProductId}.", productId);
-                Console.WriteLine("Error encountered : ", ex.Message); return ;
-
+                throw;
             }
         }
 
-        public async Task<bool> DeductStockAsync(int productId, int quantity)
+        public async Task DeductStockAsync(int productId, int quantity)  // was: Task<bool>
         {
             try
             {
@@ -359,34 +362,39 @@ namespace CatalogService.Repositories
                 await _context.SaveChangesAsync();
                 _logger.LogInformation("Deducted {Quantity} from product {ProductId}. Remaining: {Remaining}.",
                     quantity, productId, product.AvailableQuantity);
-                return true;
             }
-            catch (CatalogException) { return default; }
+            catch (CatalogException) { throw; }  // was: return default — this swallowed InsufficientStockException!
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error deducting stock for product {ProductId}.", productId);
-                Console.WriteLine("Error encountered : ", ex.Message); return default;
-
+                throw;
             }
         }
 
-        // ─── Variant Methods 
+        // ─── Variant Methods ──────────────────────────────────────────────────────
 
         public async Task CreateVariantAsync(ProductVariant variant)
         {
             if (variant is null)
             {
                 _logger.LogWarning("CreateVariantAsync called with null variant.");
-                return;
+                throw new ArgumentNullException(nameof(variant));
+            }
+
+            if (!await _context.Products.AnyAsync(p => p.Id == variant.ProductId))
+            {
+                _logger.LogWarning("Product {ProductId} not found when creating variant.", variant.ProductId);
+                throw new ProductNotFoundException(variant.ProductId);   // was: Console.WriteLine; return
+            }
+
+            if (await _context.ProductVariants.AnyAsync(v => v.ProductId == variant.ProductId && v.SKU == variant.SKU))
+            {
+                _logger.LogWarning("SKU '{SKU}' already exists for product {ProductId}.", variant.SKU, variant.ProductId);
+                throw new VariantSkuConflictException(variant.SKU, variant.ProductId);  // was: Console.WriteLine; return
             }
 
             try
             {
-                if (!await _context.Products.AnyAsync(p => p.Id == variant.ProductId)) { Console.WriteLine("Product Not found."); return; }
-
-                if (await _context.ProductVariants.AnyAsync(v => v.ProductId == variant.ProductId && v.SKU == variant.SKU)) { Console.WriteLine("Product Not found."); return; }
-               
-
                 _context.ProductVariants.Add(variant);
                 await _context.SaveChangesAsync();
                 _logger.LogInformation("Variant {VariantId} (SKU: {SKU}) created for product {ProductId}.",
@@ -526,20 +534,19 @@ namespace CatalogService.Repositories
             }
         }
 
-        public async Task<bool> DeductVariantStockAsync(int variantId, int quantity)
+        public async Task DeductVariantStockAsync(int variantId, int quantity)  // was: Task<bool>
         {
             try
             {
                 var variant = await GetVariantOrThrowAsync(variantId);
 
                 if (variant.Stock < quantity)
-                    throw new InsufficientStockException(variant.Stock, quantity);
+                    throw new InsufficientStockException(variant.Stock, quantity); 
 
                 variant.Stock -= quantity;
                 await _context.SaveChangesAsync();
                 _logger.LogInformation("Deducted {Quantity} from variant {VariantId}. Remaining: {Remaining}.",
                     quantity, variantId, variant.Stock);
-                return true;
             }
             catch (CatalogException) { throw; }
             catch (Exception ex)
@@ -548,5 +555,6 @@ namespace CatalogService.Repositories
                 throw;
             }
         }
+
     }
 }

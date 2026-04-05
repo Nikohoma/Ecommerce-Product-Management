@@ -25,6 +25,10 @@ namespace CatalogService.Middleware
                 NegativeStockException or
                 InsufficientStockException => (422, "Unprocessable Entity"),
 
+                ProductNotFoundException or
+                VariantNotFoundException or
+                CategoryNotFoundException => (404, "Not Found"),
+
                 _ => (500, "Internal Server Error")
             };
 

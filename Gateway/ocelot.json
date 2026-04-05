@@ -28,6 +28,10 @@
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
+      },
+      "FileCacheOptions": {
+        "TtlSeconds": 60,
+        "Region": "catalog"
       }
     },
     {
@@ -45,6 +49,10 @@
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
+      },
+      "FileCacheOptions": {
+        "TtlSeconds": 60,
+        "Region": "variants"
       }
     },
     {
@@ -62,6 +70,10 @@
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
+      },
+      "FileCacheOptions": {
+        "TtlSeconds": 30,
+        "Region": "reports"
       }
     },
     {

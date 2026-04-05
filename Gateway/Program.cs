@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using NLog;
 using NLog.Web;
+using Ocelot.Cache.CacheManager;
 using Ocelot.DependencyInjection;
 using Ocelot.Middleware;
 using System.Text;
@@ -57,7 +58,8 @@ try
 
     builder.Services.AddAuthorization();
     builder.Services.AddSwaggerForOcelot(builder.Configuration);
-    builder.Services.AddOcelot();
+    //builder.Services.AddOcelot();
+    builder.Services.AddOcelot().AddCacheManager(x => x.WithDictionaryHandle());
 
     var app = builder.Build();
     app.UseMiddleware<RequestLoggingMiddleware>();

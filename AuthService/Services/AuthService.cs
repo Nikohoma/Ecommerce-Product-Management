@@ -1,4 +1,5 @@
-﻿using Auth.Models;
+﻿using Auth.Exceptions;
+using Auth.Models;
 using Auth.Repository;
 using ECommerceProductManagement.Models;
 using ECommerceProductManagement.Services;
@@ -8,7 +9,9 @@ namespace Auth.Services
 {
     public class AuthService
     {
-        private readonly IUserRepository _repo; private readonly JwtService _jwt; private readonly OtpService _otp;
+        private readonly IUserRepository _repo;
+        private readonly JwtService _jwt;
+        private readonly OtpService _otp;
         private readonly PasswordHasher _hash;
         private readonly ILogger<AuthService> _logger;
 
@@ -30,8 +33,7 @@ namespace Auth.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to send OTP to {Email} for purpose {Purpose}", email, purpose);
-                Console.WriteLine("An Error Occured : " + ex.Message);
-                return ;
+                throw new OtpDeliveryException(email, ex);
             }
         }
 
@@ -47,8 +49,7 @@ namespace Auth.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error validating OTP for {Email}, purpose {Purpose}", email, purpose);
-                Console.WriteLine("An Error Occured : " + ex.Message);
-                return default;
+                throw new OtpValidationException(email, ex);
             }
         }
 
@@ -61,7 +62,7 @@ namespace Auth.Services
                     Name = name,
                     Email = email,
                     PasswordHash = _hash.Hash(password),
-                    Role = "Admin"
+                    Role = role
                 };
 
                 await _repo.AddUserAsync(user);
@@ -71,11 +72,14 @@ namespace Auth.Services
                 _logger.LogInformation("User {Email} registered successfully with role {Role}", email, role);
                 return tokens;
             }
+            catch (AuthException)
+            {
+                throw; 
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Registration failed for {Email}", email);
-                Console.WriteLine("An Error Occured : " + ex.Message);
-                return default;
+                throw new RegistrationException(email, ex);
             }
         }
 
@@ -87,18 +91,21 @@ namespace Auth.Services
                 if (user == null || !_hash.Verify(password, user.PasswordHash))
                 {
                     _logger.LogWarning("Invalid credentials for {Email}", email);
-                    return null;
+                    return null; // expected business case — not an exception
                 }
 
                 var tokens = await IssueTokensAsync(user);
                 _logger.LogInformation("User {Email} logged in", email);
                 return tokens;
             }
+            catch (AuthException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Login failed for {Email}", email);
-                Console.WriteLine("An Error Occured : " + ex.Message);
-                return default;
+                throw new LoginException(email, ex);
             }
         }
 
@@ -109,19 +116,22 @@ namespace Auth.Services
                 var user = await _repo.GetByEmailAsync(email);
                 if (user == null)
                 {
-                    _logger.LogWarning("OTP login, user not found for {Email}", email);
-                    return null;
+                    _logger.LogWarning("OTP login — user not found for {Email}", email);
+                    return null; // expected business case
                 }
 
                 var tokens = await IssueTokensAsync(user);
                 _logger.LogInformation("User {Email} logged in via OTP", email);
                 return tokens;
             }
+            catch (AuthException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "OTP login failed for {Email}", email);
-                Console.WriteLine("An Error Occured : " + ex.Message);
-                return default;
+                throw new LoginException(email, ex);
             }
         }
 
@@ -133,7 +143,7 @@ namespace Auth.Services
                 if (stored == null)
                 {
                     _logger.LogWarning("Invalid or expired refresh token used");
-                    return null;
+                    return null; 
                 }
 
                 stored.IsRevoked = true;
@@ -152,11 +162,14 @@ namespace Auth.Services
                 _logger.LogInformation("Tokens refreshed for UserId {UserId}", stored.UserId);
                 return (newAccess, newRefresh);
             }
+            catch (AuthException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Token refresh failed");
-                Console.WriteLine("An Error Occured : " + ex.Message);
-                return default;
+                throw new TokenRefreshException(ex);
             }
         }
 
@@ -176,11 +189,14 @@ namespace Auth.Services
                 _logger.LogInformation("User with UserId {UserId} logged out", stored.UserId);
                 return true;
             }
+            catch (AuthException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Logout failed");
-                Console.WriteLine("An Error Occured : " + ex.Message);
-                return default;
+                throw new LogoutException(ex);
             }
         }
 
@@ -192,7 +208,7 @@ namespace Auth.Services
                 if (user == null)
                 {
                     _logger.LogWarning("Password reset — user not found for {Email}", email);
-                    return false;
+                    return false; 
                 }
 
                 user.PasswordHash = _hash.Hash(newPassword);
@@ -201,15 +217,17 @@ namespace Auth.Services
                 _logger.LogInformation("Password reset successful for {Email}", email);
                 return true;
             }
+            catch (AuthException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Password reset failed for {Email}", email);
-                Console.WriteLine("An Error Occured : " + ex.Message);
-                return default;
+                throw new PasswordResetException(email, ex);
             }
         }
 
-        
         private async Task<(string accessToken, string refreshToken)> IssueTokensAsync(User user)
         {
             try
@@ -227,11 +245,14 @@ namespace Auth.Services
                 await _repo.SaveAsync();
                 return (access, refresh);
             }
+            catch (AuthException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to issue tokens for UserId {UserId}", user.Id);
-                Console.WriteLine("An Error Occured : " + ex.Message);
-                return default;
+                throw new TokenIssuanceException(user.Id, ex);
             }
         }
     }

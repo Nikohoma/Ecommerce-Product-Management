@@ -1,54 +1,102 @@
-﻿using Microsoft.AspNetCore.Connections;
-using Microsoft.EntityFrameworkCore.Metadata;
+﻿using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 using Shared.Contracts;
 using System.Text;
 using System.Text.Json;
+using WorkflowService.Exceptions;
 
 public class Publisher
 {
-    public readonly IConfiguration _configuration;
+    private readonly IConfiguration _configuration;  // was public — encapsulation fix
+    private readonly ILogger<Publisher> _logger;
 
-    public Publisher(IConfiguration configuration)
+    private const string QueueName = "workflow-queue";
+
+    public Publisher(IConfiguration configuration, ILogger<Publisher> logger)
     {
         _configuration = configuration;
+        _logger = logger;
     }
 
-    public async Task Publish(ProductWorkflowEvent message)
+    public async Task PublishAsync(ProductWorkflowEvent message)
     {
-        var factory = new ConnectionFactory();
-        _configuration.GetSection("RabbitMq").Bind(factory);
+        // Guard — validate before any I/O
+        ArgumentNullException.ThrowIfNull(message);
 
-        using var connection = await factory.CreateConnectionAsync();
-        using var channel = await connection.CreateChannelAsync();
+        var body = SerializeMessage(message);
 
-        await channel.QueueDeclareAsync(
-            queue: "workflow-queue",
-            durable: false,
-            exclusive: false,
-            autoDelete: false,
-            arguments: null
-            );
-        if (message != null)
+        IConnection connection;
+        IChannel channel;
+
+        try
         {
-            var json = JsonSerializer.Serialize(message);
-            var body = Encoding.UTF8.GetBytes(json);
+            var factory = new ConnectionFactory();
+            _configuration.GetSection("RabbitMq").Bind(factory);
 
-            try
-            {
-                await channel.BasicPublishAsync(
-                    exchange: "",
-                    routingKey: "workflow-queue",
-                    body: body
-                );
+            connection = await factory.CreateConnectionAsync();
+            channel = await connection.CreateChannelAsync();
 
-                Console.WriteLine($"Sent: {json}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Publish failed: {ex.Message}");
-            }
+            _logger.LogInformation("RabbitMQ connection established for publishing");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to connect to RabbitMQ");
+            throw new PublisherConnectionException(ex);
+        }
+
+        await using var _ = connection;   // async-safe disposal
+        await using var __ = channel;
+
+        try
+        {
+            await channel.QueueDeclareAsync(
+                queue: QueueName,
+                durable: false,
+                exclusive: false,
+                autoDelete: false,
+                arguments: null
+            );
+
+            _logger.LogInformation("Queue '{QueueName}' declared", QueueName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to declare queue '{QueueName}'", QueueName);
+            throw new QueueDeclarationException(QueueName, ex);
+        }
+
+        try
+        {
+            await channel.BasicPublishAsync(
+                exchange: "",
+                routingKey: QueueName,
+                body: body
+            );
+
+            _logger.LogInformation(
+                "Message published to '{QueueName}' — ProductId: {ProductId}",
+                QueueName, message.ProductId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to publish message to '{QueueName}'", QueueName);
+            throw new MessagePublishException(QueueName, ex);
         }
     }
 
+    // Isolated so a serialization bug never touches the network
+    private byte[] SerializeMessage(ProductWorkflowEvent message)
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(message);
+            _logger.LogDebug("Message serialized: {Json}", json);
+            return Encoding.UTF8.GetBytes(json);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to serialize ProductWorkflowEvent");
+            throw new MessageSerializationException(ex);
+        }
+    }
 }

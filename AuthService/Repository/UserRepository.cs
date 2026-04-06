@@ -1,8 +1,8 @@
-﻿using Auth.Models;
+﻿using Auth.Exceptions;
+using Auth.Models;
 using ECommerceProductManagement.Data;
 using ECommerceProductManagement.Models;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
 namespace Auth.Repository
 {
@@ -26,8 +26,7 @@ namespace Auth.Repository
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error checking email existence for {Email}", email);
-                Console.WriteLine("An Error Occured : "+ex.Message);
-                return default;
+                throw new UserPersistenceException("EmailExistsCheck", ex);
             }
         }
 
@@ -40,8 +39,7 @@ namespace Auth.Repository
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error checking username existence for {Name}", name);
-                Console.WriteLine("An Error Occured : " + ex.Message);
-                return default;
+                throw new UserPersistenceException("UsernameExistsCheck", ex);
             }
         }
 
@@ -54,8 +52,7 @@ namespace Auth.Repository
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error fetching user by email {Email}", email);
-                Console.WriteLine("An Error Occured : " + ex.Message);
-                return default;
+                throw new UserPersistenceException("GetByEmail", ex);
             }
         }
 
@@ -68,8 +65,7 @@ namespace Auth.Repository
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error adding user {Email}", user.Email);
-                Console.WriteLine("An Error Occured : " + ex.Message);
-                return;
+                throw new UserPersistenceException("AddUser", ex);
             }
         }
 
@@ -82,8 +78,7 @@ namespace Auth.Repository
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error adding refresh token for UserId {UserId}", token.UserId);
-                Console.WriteLine("An Error Occured : " + ex.Message);
-                return;
+                throw new UserPersistenceException("AddRefreshToken", ex);
             }
         }
 
@@ -96,8 +91,7 @@ namespace Auth.Repository
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving refresh token");
-                Console.WriteLine("An Error Occured : " + ex.Message);
-                return default;
+                throw new UserPersistenceException("GetValidRefreshToken", ex);
             }
         }
 
@@ -105,8 +99,7 @@ namespace Auth.Repository
         {
             try
             {
-                var tokens = _db.RefreshTokens
-                    .Where(t => t.UserId == userId && !t.IsRevoked);
+                var tokens = _db.RefreshTokens.Where(t => t.UserId == userId && !t.IsRevoked);
 
                 foreach (var t in tokens)
                     t.IsRevoked = true;
@@ -117,8 +110,7 @@ namespace Auth.Repository
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error revoking tokens for UserId {UserId}", userId);
-                Console.WriteLine("An Error Occured : " + ex.Message);
-                return default;
+                throw new TokenRevocationException(userId, ex);
             }
         }
 
@@ -131,14 +123,12 @@ namespace Auth.Repository
             catch (DbUpdateException ex)
             {
                 _logger.LogError(ex, "Database update failed");
-                Console.WriteLine("An Error Occured : " + ex.Message);
-                return;
+                throw new UserPersistenceException("SaveChanges", ex);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error during save");
-                Console.WriteLine("An Error Occured : " + ex.Message);
-                return;
+                throw new UserPersistenceException("SaveChanges", ex);
             }
         }
     }

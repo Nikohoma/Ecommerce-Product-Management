@@ -1,13 +1,18 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using System.Security.Claims;
+using NLog;
+using NLog.Web;
 using System.Security.Claims;
 using System.Text;
 using WorkflowService.Data;
 using WorkflowServices.Services;
 
+var logger = LogManager.Setup().LoadConfigurationFromFile("nlog.config").GetCurrentClassLogger();
 var builder = WebApplication.CreateBuilder(args);
+builder.Logging.ClearProviders();  
+builder.Host.UseNLog();              
+
 builder.Services.AddScoped<WorkflowServices.Services.WorkflowService>();
 builder.Services.AddScoped<Publisher>();
 

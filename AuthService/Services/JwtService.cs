@@ -1,95 +1,119 @@
-﻿using Microsoft.IdentityModel.Tokens;
+﻿using Auth.Exceptions;
+using Microsoft.Extensions.Logging;
+using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 
-public class JwtService
+namespace Auth.Services
 {
-    private readonly IConfiguration _config;
+    public class JwtService
+    {
+        private readonly IConfiguration _config;
+        private readonly ILogger<JwtService> _logger;
 
-    public JwtService(IConfiguration config)
-    {
-        _config = config;
-    }
-    public string GenerateToken(string email, string role)
-    {
-        try
+        public JwtService(IConfiguration config, ILogger<JwtService> logger)
+        {
+            _config = config;
+            _logger = logger;
+        }
+
+        public string GenerateToken(string email, string role)
         {
             if (string.IsNullOrWhiteSpace(email))
-                throw new ArgumentException("Email cannot be empty.");
+                throw new ArgumentException("Email cannot be empty.", nameof(email));
 
             if (string.IsNullOrWhiteSpace(role))
-                throw new ArgumentException("Role cannot be empty.");
+                throw new ArgumentException("Role cannot be empty.", nameof(role));
 
+            var (keyStr, issuer, expiryHours) = ResolveConfig();
+
+            try
+            {
+                var claims = BuildClaims(email, role);
+
+                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyStr));
+                var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+                var token = new JwtSecurityToken(
+                    issuer: issuer,
+                    audience: null,
+                    claims: claims,
+                    expires: DateTime.UtcNow.AddHours(expiryHours),
+                    signingCredentials: creds);
+
+                var written = new JwtSecurityTokenHandler().WriteToken(token);
+                _logger.LogInformation("JWT generated for {Email} with role {Role}", email, role);
+                return written;
+            }
+            catch (SecurityTokenException ex)
+            {
+                _logger.LogError(ex, "Token signing failed for {Email}", email);
+                throw new JwtGenerationException(ex);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error generating JWT for {Email}", email);
+                throw new JwtGenerationException(ex);
+            }
+        }
+
+        public string GenerateRefreshToken()
+        {
+            try
+            {
+                return Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
+            }
+            catch (CryptographicException ex)
+            {
+                _logger.LogError(ex, "Cryptographic failure generating refresh token");
+                throw new RefreshTokenGenerationException(ex);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error generating refresh token");
+                throw new RefreshTokenGenerationException(ex);
+            }
+        }
+
+        private (string keyStr, string issuer, int expiryHours) ResolveConfig()
+        {
             var keyStr = _config["Jwt:Key"];
             var issuer = _config["Jwt:Issuer"];
 
-            if (string.IsNullOrWhiteSpace(keyStr)) { Console.WriteLine("JWT Key is missing in configuration."); return default; }
+            if (string.IsNullOrWhiteSpace(keyStr))
+                throw new JwtConfigurationException("'Jwt:Key' is missing");
 
-            if (string.IsNullOrWhiteSpace(issuer)) { Console.WriteLine("JWT Issuer is missing in configuration."); return default; }
+            if (string.IsNullOrWhiteSpace(issuer))
+                throw new JwtConfigurationException("'Jwt:Issuer' is missing");
 
-            var audienceKeys = new[] { "Jwt:Audience0", "Jwt:Audience1", "Jwt:Audience2" };
+            var expiryHours = _config.GetValue<int>("Jwt:Expiry");
+            if (expiryHours <= 0)
+                throw new JwtConfigurationException("'Jwt:Expiry' must be a positive integer (hours)");
 
+            return (keyStr, issuer, expiryHours);
+        }
+
+        // Building claims list including all configured audiences
+        private List<Claim> BuildClaims(string email, string role)
+        {
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.Name, email),
+                new Claim(ClaimTypes.Name,           email),
                 new Claim(ClaimTypes.NameIdentifier, email),
-                new Claim(ClaimTypes.Email, email),
-                new Claim(ClaimTypes.Role, role),
+                new Claim(ClaimTypes.Email,          email),
+                new Claim(ClaimTypes.Role,           role),
             };
 
-            foreach (var k in audienceKeys)
+            foreach (var key in new[] { "Jwt:Audience0", "Jwt:Audience1", "Jwt:Audience2" })
             {
-                var aud = _config[k];
+                var aud = _config[key];
                 if (!string.IsNullOrWhiteSpace(aud))
                     claims.Add(new Claim(JwtRegisteredClaimNames.Aud, aud));
             }
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyStr));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-            var expiryHours = _config.GetValue<int>("Jwt:Expiry");
-
-            var token = new JwtSecurityToken(
-                issuer: issuer,
-                audience: null,
-                claims: claims,
-                expires: DateTime.UtcNow.AddHours(expiryHours),
-                signingCredentials: creds);
-
-            return new JwtSecurityTokenHandler().WriteToken(token);
-        }
-        catch (ArgumentException ex)
-        {
-            Console.WriteLine($"Invalid input: {ex.Message}", ex); return default;
-        }
-        catch (InvalidOperationException ex)
-        {
-            Console.WriteLine($"Configuration error: {ex.Message}", ex); return default;
-        }
-        catch (SecurityTokenException ex)
-        {
-            Console.WriteLine($"Token generation failed: {ex.Message}", ex); return default;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine("Unexpected error while generating JWT token.", ex); return default;
-        }
-    }
-
-    public string GenerateRefreshToken()
-    {
-        try
-        {
-            return Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
-        }
-        catch (CryptographicException ex)
-        {
-            Console.WriteLine("Failed to generate secure refresh token.", ex); return default;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine("Unexpected error while generating refresh token.", ex); return default;
+            return claims;
         }
     }
 }

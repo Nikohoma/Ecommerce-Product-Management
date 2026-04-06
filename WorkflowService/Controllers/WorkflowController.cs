@@ -1,44 +1,87 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Shared.Contracts;
-using System.ComponentModel.DataAnnotations;
-using System.Security.Claims;
+using Microsoft.Extensions.Logging;
+using WorkflowService.Exceptions;
 using WorkflowServices.Services;
 
 namespace WorkflowService.Controllers
 {
     [Authorize(Roles = "Admin")]
     [ApiController]
-    [Route("test/[controller]")]
-    public class WorkflowController : Controller
+    [Route("api/[controller]")]
+    public class WorkflowController : ControllerBase  
     {
-        public readonly WorkflowServices.Services.WorkflowService _service;
+        private readonly WorkflowServices.Services.WorkflowService _service; 
+        private readonly ILogger<WorkflowController> _logger;
 
-        public WorkflowController(WorkflowServices.Services.WorkflowService service)
+        private static readonly HashSet<string> ValidStatuses =new(StringComparer.OrdinalIgnoreCase) { "submit", "approve", "reject" };
+
+        public WorkflowController(WorkflowServices.Services.WorkflowService service, ILogger<WorkflowController> logger)
         {
             _service = service;
+            _logger = logger;
         }
+
         [HttpPost]
-        public async Task<IActionResult> SetStatus(int productId,string status)
+        public async Task<IActionResult> SetStatusAsync(int productId, string status)
         {
-            var name = User.Identity?.Name?? "System";
+            var name = User.Identity?.Name ?? "System";
 
-            Console.WriteLine("Controller HIT");
-            if (status.ToLower().Trim() == "submit")
+            if (string.IsNullOrWhiteSpace(status) || !ValidStatuses.Contains(status))
             {
-                await _service.Submit(productId,name);
-                return Ok();
+                _logger.LogWarning("Invalid status '{Status}' received for ProductId {ProductId} by {User}",status, productId, name);
+
+                return BadRequest(new
+                {
+                    error = $"Invalid status '{status}'. Allowed values: submit, approve, reject."
+                });
             }
-            else if(status.ToLower().Trim() == "approve")
+
+            var normalizedStatus = status.Trim().ToLower();
+
+            _logger.LogInformation("Workflow action '{Status}' requested — ProductId: {ProductId}, User: {User}",normalizedStatus, productId, name);
+
+            try
             {
-                await _service.Approve(productId,name); return Ok();
+                var task = normalizedStatus switch
+                {
+                    "submit" => _service.SubmitAsync(productId, name),
+                    "approve" => _service.ApproveAsync(productId, name),
+                    "reject" => _service.RejectAsync(productId, name),
+                    _ => throw new InvalidOperationException($"Unhandled status: {normalizedStatus}")
+                };
+
+                await task;
+
+                _logger.LogInformation("Workflow action '{Status}' succeeded — ProductId: {ProductId}, User: {User}",normalizedStatus, productId, name);
+
+                return Ok(new
+                {
+                    productId,
+                    status = normalizedStatus,
+                    updatedBy = name
+                });
             }
-            else if (status.ToLower().Trim() == "reject")
+            catch (WorkflowLogException ex)
             {
-                await _service.Reject(productId, name);return Ok();
+                _logger.LogError(ex,"Workflow log persistence failed for ProductId {ProductId}",productId);
+                return StatusCode(503, new { error = ex.Message });
             }
-            return BadRequest();
+            catch (WorkflowPublishException ex)
+            {
+                _logger.LogError(ex,"Workflow event publish failed for ProductId {ProductId}",productId);
+                return StatusCode(503, new { error = ex.Message });
+            }
+            catch (WorkflowException ex)
+            {
+                _logger.LogError(ex,"Workflow error for ProductId {ProductId}",productId);
+                return StatusCode(503, new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,"Unexpected error processing workflow action for ProductId {ProductId}",productId);
+                return StatusCode(500, new { error = "An unexpected error occurred." });
+            }
         }
-
     }
 }

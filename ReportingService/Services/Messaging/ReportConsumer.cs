@@ -1,7 +1,8 @@
-﻿using Microsoft.AspNetCore.Connections;
-using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using ReportingService.Exceptions;
 using ReportingService.Models;
 using Shared.Contracts;
 using System.Text;
@@ -11,82 +12,133 @@ public class ReportConsumer : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IConfiguration _configuration;
+    private readonly ILogger<ReportConsumer> _logger;
 
-    private IConnection _connection;
-    private IChannel _channel;
+    private IConnection? _connection;
+    private IChannel? _channel;
 
-    public ReportConsumer(IServiceScopeFactory scopeFactory, IConfiguration configuration)
+    private const string QueueName = "report-queue";
+
+    public ReportConsumer(
+        IServiceScopeFactory scopeFactory,
+        IConfiguration configuration,
+        ILogger<ReportConsumer> logger)
     {
         _scopeFactory = scopeFactory;
         _configuration = configuration;
+        _logger = logger;
     }
 
     public override async Task StartAsync(CancellationToken cancellationToken)
     {
-        //var factory = new RabbitMQ.Client.IConnectionFactory();
-        RabbitMQ.Client.IConnectionFactory factory = new RabbitMQ.Client.ConnectionFactory();
-        _configuration.GetSection("RabbitMq").Bind(factory);
+        try
+        {
+            IConnectionFactory factory = new ConnectionFactory();
+            _configuration.GetSection("RabbitMq").Bind(factory);
 
-        _connection = await factory.CreateConnectionAsync();
-        _channel = await _connection.CreateChannelAsync();
+            _connection = await factory.CreateConnectionAsync();
+            _logger.LogInformation("RabbitMQ connection established");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create RabbitMQ connection");
+            throw new RabbitMqConnectionException(ex);
+        }
 
-        await _channel.QueueDeclareAsync(
-            queue: "report-queue",
-            durable: false,
-            exclusive: false,
-            autoDelete: false
-        );
+        try
+        {
+            _channel = await _connection.CreateChannelAsync();
+
+            await _channel.QueueDeclareAsync(
+                queue: QueueName,
+                durable: false,
+                exclusive: false,
+                autoDelete: false
+            );
+
+            _logger.LogInformation("Queue '{QueueName}' declared successfully", QueueName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to declare queue '{QueueName}'", QueueName);
+            throw new QueueDeclarationException(QueueName, ex);
+        }
 
         await base.StartAsync(cancellationToken);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        //Console.WriteLine("Reporting Consumer started");
+        _logger.LogInformation("ReportConsumer started, listening on '{QueueName}'", QueueName);
 
         var consumer = new AsyncEventingBasicConsumer(_channel);
 
         consumer.ReceivedAsync += async (sender, eventArgs) =>
         {
-            var body = eventArgs.Body.ToArray();
-            var json = Encoding.UTF8.GetString(body);
+            var json = Encoding.UTF8.GetString(eventArgs.Body.ToArray());
+            _logger.LogDebug("Raw message received: {Json}", json);
 
-            Console.WriteLine($"Received: {json}");
-
-            var message = JsonSerializer.Deserialize<ProductStatusChangedEvent>(json);
-
-            if (message == null)
-                return;
-
-            using var scope = _scopeFactory.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<ReportingDbContext>();
+            ProductStatusChangedEvent? message;
 
             try
             {
-                var report = new ProductReport
+                message = JsonSerializer.Deserialize<ProductStatusChangedEvent>(json);
+
+                if (message == null)
                 {
-                    ProductId = message.ProductId,
-                    Status = message.Status,
-                    UpdatedAt = message.UpdatedAt,
-                    Price = message.Price
-                };
-
-                db.ProductReports.Add(report);
-                await db.SaveChangesAsync();
-
-                Console.WriteLine("Report saved");
+                    _logger.LogWarning("Deserialized message was null — skipping. Payload: {Json}", json);
+                    return;
+                }
             }
-            catch (Exception ex)
+            catch (JsonException ex)
             {
-                Console.WriteLine($"Error: {ex.Message}");
+                _logger.LogError(ex, "Message deserialization failed. Payload: {Json}", json);
+                throw new MessageDeserializationException(ex);
+                // Do not ack — let dead-letter or retry policy handle it
             }
+
+            await PersistReportAsync(message);
         };
 
         await _channel.BasicConsumeAsync(
-            queue: "report-queue",
+            queue: QueueName,
             autoAck: true,
             consumer: consumer
         );
+
+        // Keep ExecuteAsync alive until the host requests shutdown
+        await Task.Delay(Timeout.Infinite, stoppingToken);
+    }
+
+    private async Task PersistReportAsync(ProductStatusChangedEvent message)
+    {
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ReportingDbContext>();
+
+            var report = new ProductReport
+            {
+                ProductId = message.ProductId,
+                Status = message.Status,
+                UpdatedAt = message.UpdatedAt,
+                Price = message.Price
+            };
+
+            db.ProductReports.Add(report);
+            await db.SaveChangesAsync();
+
+            _logger.LogInformation(
+                "Report saved — ProductId: {ProductId}, Status: {Status}, UpdatedAt: {UpdatedAt}",
+                message.ProductId, message.Status, message.UpdatedAt);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to persist report for ProductId {ProductId}",
+                message.ProductId);
+            throw new ReportPersistenceException(message.ProductId, ex);
+        }
     }
 
     public override void Dispose()

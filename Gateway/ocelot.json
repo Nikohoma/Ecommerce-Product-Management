@@ -77,7 +77,7 @@
       }
     },
     {
-      "DownstreamPathTemplate": "/test/workflow/{everything}",
+      "DownstreamPathTemplate": "/api/workflow/{everything}",
       "DownstreamScheme": "https",
       "DownstreamHostAndPorts": [
         {

@@ -50,6 +50,7 @@ try
                     builder.Configuration["Jwt:Audience0"],
                     builder.Configuration["Jwt:Audience1"],
                     builder.Configuration["Jwt:Audience2"],
+                    builder.Configuration["Jwt:Audience3"]
                 },
                 IssuerSigningKey = new SymmetricSecurityKey(
                     Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))

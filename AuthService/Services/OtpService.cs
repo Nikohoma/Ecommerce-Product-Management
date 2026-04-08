@@ -88,14 +88,7 @@ namespace Auth.Services
 
             try
             {
-                var otp = await _db.OtpRecords
-                    .Where(o =>
-                        o.Email == email &&
-                        o.OtpCode == code &&
-                        o.Purpose == purpose &&
-                        !o.IsUsed &&
-                        o.ExpiresAt > DateTime.UtcNow)
-                    .FirstOrDefaultAsync();
+                var otp = await _db.OtpRecords.Where(o =>o.Email == email &&o.OtpCode == code &&o.Purpose == purpose &&!o.IsUsed &&o.ExpiresAt > DateTime.UtcNow).FirstOrDefaultAsync();
 
                 if (otp == null)
                 {

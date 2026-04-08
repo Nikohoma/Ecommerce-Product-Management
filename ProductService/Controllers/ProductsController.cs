@@ -43,7 +43,7 @@ public class ProductsController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize]
     public async Task<IActionResult> GetById(int id)
     {
         var product = await _service.GetProductDetails(id);

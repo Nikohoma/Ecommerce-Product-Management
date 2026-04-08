@@ -67,6 +67,49 @@ public class ReportConsumer : BackgroundService
         await base.StartAsync(cancellationToken);
     }
 
+    //protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    //{
+    //    _logger.LogInformation("ReportConsumer started, listening on '{QueueName}'", QueueName);
+
+    //    var consumer = new AsyncEventingBasicConsumer(_channel);
+
+    //    consumer.ReceivedAsync += async (sender, eventArgs) =>
+    //    {
+    //        var json = Encoding.UTF8.GetString(eventArgs.Body.ToArray());
+    //        _logger.LogDebug("Raw message received: {Json}", json);
+
+    //        ProductStatusChangedEvent? message;
+
+    //        try
+    //        {
+    //            message = JsonSerializer.Deserialize<ProductStatusChangedEvent>(json);
+
+    //            if (message == null)
+    //            {
+    //                _logger.LogWarning("Deserialized message was null — skipping. Payload: {Json}", json);
+    //                return;
+    //            }
+    //        }
+    //        catch (JsonException ex)
+    //        {
+    //            _logger.LogError(ex, "Message deserialization failed. Payload: {Json}", json);
+    //            throw new MessageDeserializationException(ex);
+    //            // Do not ack — let dead-letter or retry policy handle it
+    //        }
+
+    //        await PersistReportAsync(message);
+    //    };
+
+    //    await _channel.BasicConsumeAsync(
+    //        queue: QueueName,
+    //        autoAck: true,
+    //        consumer: consumer
+    //    );
+
+    //    // Keep ExecuteAsync alive until the host requests shutdown
+    //    await Task.Delay(Timeout.Infinite, stoppingToken);
+    //}
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("ReportConsumer started, listening on '{QueueName}'", QueueName);
@@ -94,7 +137,6 @@ public class ReportConsumer : BackgroundService
             {
                 _logger.LogError(ex, "Message deserialization failed. Payload: {Json}", json);
                 throw new MessageDeserializationException(ex);
-                // Do not ack — let dead-letter or retry policy handle it
             }
 
             await PersistReportAsync(message);
@@ -106,8 +148,14 @@ public class ReportConsumer : BackgroundService
             consumer: consumer
         );
 
-        // Keep ExecuteAsync alive until the host requests shutdown
-        await Task.Delay(Timeout.Infinite, stoppingToken);
+        try
+        {
+            await Task.Delay(Timeout.Infinite, stoppingToken);
+        }
+        catch (TaskCanceledException)
+        {
+            _logger.LogInformation("ReportConsumer is shutting down gracefully.");
+        }
     }
 
     private async Task PersistReportAsync(ProductStatusChangedEvent message)

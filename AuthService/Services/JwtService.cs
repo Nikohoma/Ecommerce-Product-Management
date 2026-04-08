@@ -106,7 +106,7 @@ namespace Auth.Services
                 new Claim(ClaimTypes.Role,           role),
             };
 
-            foreach (var key in new[] { "Jwt:Audience0", "Jwt:Audience1", "Jwt:Audience2" })
+            foreach (var key in new[] { "Jwt:Audience0", "Jwt:Audience1", "Jwt:Audience2", "Jwt:Audience3" })
             {
                 var aud = _config[key];
                 if (!string.IsNullOrWhiteSpace(aud))

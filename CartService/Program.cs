@@ -1,44 +1,37 @@
-using CatalogService.Data;
-using CatalogService.Middleware;
-using CatalogService.Models;
-using CatalogService.Repositories;
-using CatalogService.Services;
-using CatalogService.Services.Messaging;
+using CartService.Data;
+using CartService.Repositories;
+using CartService.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using System.Security.Claims;
+using System.Text;
 using NLog;
 using NLog.Web;
-using RabbitMQ.Client;
-using System.Text;
 
 
-var logger = LogManager.Setup().LoadConfigurationFromAppSettings().GetCurrentClassLogger();
-
+var logger = LogManager.Setup().LoadConfigurationFromFile("nlog.config").GetCurrentClassLogger();
 
 var builder = WebApplication.CreateBuilder(args);
-//builder.Configuration.AddJsonFile("appsettings.json", optional: false).AddUserSecrets<Program>().AddEnvironmentVariables();
 builder.Logging.ClearProviders();
 builder.Host.UseNLog();
 
-builder.Services.AddSingleton<IConnection>(sp =>
-{
-    var config = sp.GetRequiredService<IConfiguration>();
-    var factory = new ConnectionFactory();
-    config.GetSection("RabbitMq").Bind(factory);
-    return factory.CreateConnectionAsync().GetAwaiter().GetResult();
-});
-builder.Services.AddScoped<PublisherForReport>();
-builder.Services.AddScoped<IProductService, ProductService>();
-builder.Services.AddScoped<IProductRepository, ProductRepository>();
-builder.Services.AddControllers();
-builder.Services.AddDbContext<ProductDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("ProductDb")));
-
+// Add services to the container.
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
-builder.Services.AddProblemDetails();
+//builder.Services.AddControllers();
+
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler =
+            System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+    });
+
+// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+builder.Services.AddDbContext<CartDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("Cartcs")));
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 .AddJwtBearer(options =>
 {
@@ -50,22 +43,31 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         ValidateIssuerSigningKey = true,
 
         ValidIssuer = builder.Configuration["Jwt:Issuer"],
-        ValidAudience = builder.Configuration["Jwt:Audience1"],
+        ValidAudience = builder.Configuration["Jwt:Audience3"],
 
         IssuerSigningKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])
         )
     };
-    
-});
-builder.Services.AddHostedService<WorkflowConsumer>();
 
-//builder.Services.AddSwaggerGen();
+});
+
+builder.Services.AddScoped<ICartRepository, CartRepository>();
+builder.Services.AddScoped<ICartService, CartService.Services.cartService>();
+
+builder.Services.AddHttpClient("Catalog", client =>
+{
+    client.BaseAddress = new Uri("https://localhost:7098"); // catalog service
+});
+
+
+builder.Services.AddAuthorization(); 
+builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "Catalog API",
+        Title = "Cart API",
         Version = "v1"
     });
 
@@ -90,15 +92,20 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 var app = builder.Build();
-app.UseExceptionHandler();
-// Configure the HTTP request pipeline.
+
 app.UseSwagger();
 app.UseSwaggerUI();
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+}
+
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
 
 app.Run();

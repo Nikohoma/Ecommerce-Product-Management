@@ -2,11 +2,10 @@
 using CartService.Exceptions;
 using CartService.Models;
 using CartService.Repositories;
-using System.Net.Http;
 
 namespace CartService.Services
 {
-    public class cartService : ICartService
+    public class cartService : ICartService  
     {
         private readonly ICartRepository _cartRepository;
         private readonly IHttpClientFactory _httpClientFactory;
@@ -24,8 +23,8 @@ namespace CartService.Services
         public async Task<CartService.Models.Cart> GetCartAsync(string userId)
         {
             _logger.LogInformation("Getting cart for user {UserId}", userId);
-            var cart = await _cartRepository.GetByUserIdAsync(userId)?? throw new CartNotFoundException(userId);
-            return cart;
+            return await _cartRepository.GetByUserIdAsync(userId)
+                ?? throw new CartNotFoundException(userId);
         }
 
         public async Task<CartItem> AddItemAsync(string userId, int productId, int quantity)
@@ -33,27 +32,24 @@ namespace CartService.Services
             if (quantity <= 0)
                 throw new InvalidQuantityException(quantity);
 
-            // Getting Products from Catalog Service
-            var client = _httpClientFactory.CreateClient("Catalog");
+            var product = await FetchProductAsync(productId);
 
-            var token = _httpContextAccessor.HttpContext!.Request.Headers["Authorization"].ToString();
-            client.DefaultRequestHeaders.Add("Authorization", token);
-
-            var response = await client.GetAsync($"/api/products/{productId}");
-
-            if (!response.IsSuccessStatusCode)
-                throw new CartException($"Product {productId} not found in catalog.");
-
-            var product = await response.Content.ReadFromJsonAsync<ProductDto>();
-
-            var cart = await _cartRepository.GetByUserIdAsync(userId)?? await _cartRepository.CreateAsync(new CartService.Models.Cart
+            var cart = await _cartRepository.GetByUserIdAsync(userId)
+                       ?? await _cartRepository.CreateAsync(new CartService.Models.Cart
                        {
                            UserId = userId,
                            Items = new List<CartItem>()
                        });
 
+            if (cart.Status != CartStatus.Active)
+                throw new CartException($"Cart is {cart.Status}. Items can only be added to an Active cart.");
+
             var existing = cart.Items.FirstOrDefault(i => i.ProductId == productId);
-            if (existing is not null){existing.Quantity += quantity; return await _cartRepository.UpdateItemAsync(existing);}
+            if (existing is not null)
+            {
+                existing.Quantity += quantity;
+                return await _cartRepository.UpdateItemAsync(existing);
+            }
 
             return await _cartRepository.AddItemAsync(new CartItem
             {
@@ -72,6 +68,9 @@ namespace CartService.Services
             var cart = await _cartRepository.GetByUserIdAsync(userId)
                        ?? throw new CartNotFoundException(userId);
 
+            if (cart.Status != CartStatus.Active)
+                throw new CartException($"Cart is {cart.Status}. Only Active carts can be modified.");
+
             var item = cart.Items.FirstOrDefault(i => i.Id == itemId)
                        ?? throw new CartItemNotFoundException(itemId);
 
@@ -83,6 +82,9 @@ namespace CartService.Services
         {
             var cart = await _cartRepository.GetByUserIdAsync(userId)
                        ?? throw new CartNotFoundException(userId);
+
+            if (cart.Status != CartStatus.Active)
+                throw new CartException($"Cart is {cart.Status}. Only Active carts can be modified.");
 
             var item = cart.Items.FirstOrDefault(i => i.Id == itemId)
                        ?? throw new CartItemNotFoundException(itemId);
@@ -96,8 +98,53 @@ namespace CartService.Services
             var cart = await _cartRepository.GetByUserIdAsync(userId)
                        ?? throw new CartNotFoundException(userId);
 
+            if (cart.Status != CartStatus.Active)
+                throw new CartException($"Cart is {cart.Status}. Only Active carts can be cleared.");
+
             foreach (var item in cart.Items.ToList())
                 await _cartRepository.RemoveItemAsync(item.Id);
+        }
+
+        public async Task<CartCheckoutDto> CheckoutAsync(string userId)
+        {
+            _logger.LogInformation("Checkout initiated for user {UserId}", userId);
+
+            var cart = await _cartRepository.GetByUserIdAsync(userId)?? throw new CartNotFoundException(userId);
+
+            var checkedOutCart = await _cartRepository.CheckoutAsync(cart.Id);
+
+            _logger.LogInformation("Cart {CartId} checked out for user {UserId}", cart.Id, userId);
+
+            // build snapshot DTO for Order Service (Phase 1: return it; Phase 2: publish to queue)
+            return new CartCheckoutDto
+            {
+                CartId = checkedOutCart.Id,
+                UserId = checkedOutCart.UserId,
+                CheckedOutAt = checkedOutCart.CheckedOutAt!.Value,
+                TotalAmount = checkedOutCart.Total,
+                Items = checkedOutCart.Items.Select(i => new CartItemSnapshotDto
+                {
+                    ProductId = i.ProductId,
+                    Quantity = i.Quantity,
+                    UnitPrice = i.PriceSnapshot,
+                    LineTotal = i.Quantity * i.PriceSnapshot
+                }).ToList()
+            };
+        }
+        private async Task<ProductDto> FetchProductAsync(int productId)
+        {
+            var client = _httpClientFactory.CreateClient("Catalog");
+
+            var token = _httpContextAccessor.HttpContext!.Request.Headers["Authorization"].ToString();
+            client.DefaultRequestHeaders.Add("Authorization", token);
+
+            var response = await client.GetAsync($"/api/products/{productId}");
+
+            if (!response.IsSuccessStatusCode)
+                throw new CartException($"Product {productId} not found in catalog.");
+
+            return await response.Content.ReadFromJsonAsync<ProductDto>()
+                ?? throw new CartException($"Failed to deserialize product {productId}.");
         }
     }
 }

@@ -20,8 +20,7 @@ namespace ReportingService.Repository
         {
             try
             {
-                var count = await _context.ProductReports
-                    .CountAsync(p => p.Status == "Approved");
+                var count = await _context.ProductReports.CountAsync(p => p.Status == "Active" || p.Status == "Inactive");
 
                 _logger.LogInformation("Approved report count: {Count}", count);
                 return count;

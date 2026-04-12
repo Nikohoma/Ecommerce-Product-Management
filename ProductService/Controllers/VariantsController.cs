@@ -76,8 +76,9 @@ public class VariantsController : ControllerBase
         return NoContent();
     }
 
-    // Deduct stock (for Order Service)
-    [Authorize(Roles = "OrderService")]
+    // Deduct stock
+    //[Authorize(Roles = "OrderService")]
+    [Authorize(Roles = "Admin,ProductManager")]
     [HttpPost("{variantId}/deduct-stock")]
     public async Task<IActionResult> DeductVariantStock(int variantId, [FromQuery] int quantity)
     {

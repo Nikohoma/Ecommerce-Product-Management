@@ -1,46 +1,32 @@
-using CartService.Data;
-using CartService.Repositories;
-using CartService.Services;
-using CartService.Services.Messaging;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using NLog;
 using NLog.Web;
+using OrderService.Data;
+using OrderService.Services;
+using OrderService.Services.Messaging;
 using RabbitMQ.Client;
-using System.Security.Claims;
 using System.Text;
 
-
 var logger = LogManager.Setup().LoadConfigurationFromFile("nlog.config").GetCurrentClassLogger();
-
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
 builder.Host.UseNLog();
-
-// Rabbit Mq Singleton Connection 
-builder.Services.AddSingleton<IConnection>(sp =>
+builder.Services.AddHttpClient("PaymentService", client =>
 {
-    var config = sp.GetRequiredService<IConfiguration>();
-    var factory = new ConnectionFactory();
-    config.GetSection("RabbitMq").Bind(factory);
-    return factory.CreateConnectionAsync().GetAwaiter().GetResult();
+    client.BaseAddress = new Uri("https://localhost:7236"); // payment service
 });
-// Add services to the container.
-builder.Services.AddHttpContextAccessor();
-//builder.Services.AddControllers();
 
-builder.Services.AddControllers()
-    .AddJsonOptions(options =>
-    {
-        options.JsonSerializerOptions.ReferenceHandler =
-            System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
-    });
-
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddDbContext<CartDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("Cartcs")));
+//builder.Services.AddControllers()
+//    .AddJsonOptions(x =>
+//        x.JsonSerializerOptions.ReferenceHandler =
+//            System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles);
+builder.Services.AddControllers(options =>
+{
+    options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
+});
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 .AddJwtBearer(options =>
@@ -53,7 +39,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         ValidateIssuerSigningKey = true,
 
         ValidIssuer = builder.Configuration["Jwt:Issuer"],
-        ValidAudience = builder.Configuration["Jwt:Audience3"],
+        ValidAudience = builder.Configuration["Jwt:Audience4"],
 
         IssuerSigningKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])
@@ -62,22 +48,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 });
 
-builder.Services.AddScoped<ICartRepository, CartRepository>();
-builder.Services.AddScoped<ICartService, CartService.Services.cartService>();
-
-builder.Services.AddHttpClient("Catalog", client =>
-{
-    client.BaseAddress = new Uri("https://localhost:7098"); // catalog service
-});
-
-
-builder.Services.AddAuthorization(); 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "Cart API",
+        Title = "Order API",
         Version = "v1"
     });
 
@@ -100,18 +76,31 @@ builder.Services.AddSwaggerGen(options =>
     });
 
 });
-builder.Services.AddScoped<ICartRepository, CartRepository>();
-builder.Services.AddScoped<ICartService, CartService.Services.cartService>();
-builder.Services.AddScoped<IOrderPublisher, OrderPublisher>();  
+
+
+builder.Services.AddDbContext<OrderDbContext>(options =>options.UseSqlServer(builder.Configuration.GetConnectionString("Ordercs")));
+
+
+builder.Services.AddScoped<IOrderService, OrderService.Services.OrderService>();
+
+// Rabbit Mq Singleton Connection 
+builder.Services.AddSingleton<IConnection>(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    var factory = new ConnectionFactory();
+    config.GetSection("RabbitMq").Bind(factory);
+    return factory.CreateConnectionAsync().GetAwaiter().GetResult();
+});
+
+builder.Services.AddHostedService<CartConsumer>();
+
+
 var app = builder.Build();
 
-app.UseSwagger();
-app.UseSwaggerUI();
-
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();

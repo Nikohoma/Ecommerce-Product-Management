@@ -49,6 +49,16 @@
           "Url": "https://localhost:7217/swagger/v1/swagger.json"
         }
       ]
+    },
+    {
+      "Key": "order",
+      "Config": [
+        {
+          "Name": "Order API",
+          "Version": "v1",
+          "Url": "https://localhost:7008/swagger/v1/swagger.json"
+        }
+      ]
     }
   ]
 }

@@ -1,5 +1,4 @@
-﻿// Exceptions/CartException.cs
-namespace CartService.Exceptions
+﻿namespace CartService.Exceptions
 {
     public class CartException : Exception
     {

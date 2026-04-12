@@ -4,8 +4,12 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <UserSecretsId>2beb830c-3753-4624-9d3a-03838ac2a35c</UserSecretsId>
+    <UserSecretsId>b1c380e0-86af-4d47-9b87-420dff74dc4c</UserSecretsId>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Remove="nlog.config" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.5" />
@@ -27,7 +31,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="logs\cartLogs\" />
+    <None Include="nlog.config" />
   </ItemGroup>
 
 </Project>

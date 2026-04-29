@@ -5,7 +5,7 @@ using System.Text.Json;
 
 namespace CatalogService.Services.Messaging
 {
-    public class PublisherForReport
+    public class PublisherForReport:IPublisherForReport
     {
         private readonly IConnection _connection;
         private readonly ILogger<PublisherForReport> _logger;

@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+using ReportingService.DTO;
+using Microsoft.Extensions.Logging;
 using ReportingService.Exceptions;
 using ReportingService.Models;
 using ReportingService.Repository;
@@ -26,7 +27,7 @@ namespace ReportingService.Services
         public Task<List<ProductReport>> GetReportsByProductIdAsync(int productId)
             => _repository.GetReportsByProductIdAsync(productId);
 
-        public async Task<object> GetDashboardAsync()
+        public async Task<DashboardDto> GetDashboardAsync()
         {
             try
             {
@@ -40,7 +41,7 @@ namespace ReportingService.Services
                     "Pending: {Pending}, TotalValue: {TotalValue}",
                     approved, rejected, pending, totalValue);
 
-                return new
+                return new DashboardDto
                 {
                     Approved = approved,
                     Rejected = rejected,

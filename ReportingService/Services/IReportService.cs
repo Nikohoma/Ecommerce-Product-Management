@@ -1,4 +1,5 @@
-﻿using ReportingService.Models;
+using ReportingService.DTO;
+using ReportingService.Models;
 
 namespace ReportingService.Services
 {
@@ -13,7 +14,7 @@ namespace ReportingService.Services
 
         Task<List<ProductReport>> GetAllReportsAsync();
         Task<List<ProductReport>> GetReportsByProductIdAsync(int productId);
-        Task<object> GetDashboardAsync();
+        Task<DashboardDto> GetDashboardAsync();
         Task<double> GetApprovalRateAsync();
         Task<List<ProductReport>> GetRecentReportsAsync();
 

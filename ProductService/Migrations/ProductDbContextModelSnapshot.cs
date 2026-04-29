@@ -17,7 +17,7 @@ namespace CatalogService.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.5")
+                .HasAnnotation("ProductVersion", "10.0.7")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -98,11 +98,41 @@ namespace CatalogService.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("Tags")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CategoryId");
 
                     b.ToTable("Products");
+                });
+
+            modelBuilder.Entity("CatalogService.Models.ProductMedia", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("MediaType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("MediaUrl")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.ToTable("ProductMedias");
                 });
 
             modelBuilder.Entity("CatalogService.Models.ProductVariant", b =>
@@ -148,6 +178,17 @@ namespace CatalogService.Migrations
                     b.Navigation("Category");
                 });
 
+            modelBuilder.Entity("CatalogService.Models.ProductMedia", b =>
+                {
+                    b.HasOne("CatalogService.Models.Product", "Product")
+                        .WithMany("Media")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+                });
+
             modelBuilder.Entity("CatalogService.Models.ProductVariant", b =>
                 {
                     b.HasOne("CatalogService.Models.Product", "Product")
@@ -161,6 +202,8 @@ namespace CatalogService.Migrations
 
             modelBuilder.Entity("CatalogService.Models.Product", b =>
                 {
+                    b.Navigation("Media");
+
                     b.Navigation("Variants");
                 });
 #pragma warning restore 612, 618

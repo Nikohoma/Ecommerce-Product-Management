@@ -1,19 +1,20 @@
-﻿using CatalogService.Exceptions;
-using Microsoft.EntityFrameworkCore;
 using CatalogService.Data;
+using CatalogService.Exceptions;
 using CatalogService.Models;
 using CatalogService.Services.Messaging;
+using Microsoft.EntityFrameworkCore;
 using Shared.Contracts;
+using System.Linq;
 
 namespace CatalogService.Repositories
 {
     public class ProductRepository : IProductRepository
     {
         private readonly ProductDbContext _context;
-        private readonly PublisherForReport _publish;
+        private readonly IPublisherForReport _publish;
         private readonly ILogger<ProductRepository> _logger;
 
-        public ProductRepository(ProductDbContext context, PublisherForReport publish, ILogger<ProductRepository> logger)
+        public ProductRepository(ProductDbContext context, IPublisherForReport publish, ILogger<ProductRepository> logger)
         {
             _context = context;
             _publish = publish;
@@ -24,22 +25,24 @@ namespace CatalogService.Repositories
 
         private async Task<Product> GetProductOrThrowAsync(int productId)
         {
-            var product = await _context.Products.FindAsync(productId);
+            var product = await _context.Products
+                .Include(p => p.Media)
+                .FirstOrDefaultAsync(p => p.Id == productId);
             if (product is null)
             {
                 _logger.LogWarning("Product {ProductId} not found.", productId);
-                throw new ProductNotFoundException(productId);   // was: return default
+                throw new ProductNotFoundException(productId);   
             }
             return product;
         }
 
         private async Task<ProductVariant> GetVariantOrThrowAsync(int variantId)
         {
-            var variant = await _context.ProductVariants.FindAsync(variantId);
+            var variant = await _context.ProductVariants.FirstOrDefaultAsync(v => v.Id == variantId);
             if (variant is null)
             {
                 _logger.LogWarning("Variant {VariantId} not found.", variantId);
-                throw new VariantNotFoundException(variantId);   // was: return default
+                throw new VariantNotFoundException(variantId);   
             }
             return variant;
         }
@@ -68,7 +71,7 @@ namespace CatalogService.Repositories
             if (await _context.Products.AnyAsync(p => p.Id == product.Id))
             {
                 _logger.LogWarning("Product {ProductId} already exists.", product.Id);
-                throw new ProductAlreadyExistsException(product.Id);  // was: Console.WriteLine; return
+                throw new ProductAlreadyExistsException(product.Id);  
             }
 
             try
@@ -78,7 +81,7 @@ namespace CatalogService.Repositories
                 _logger.LogInformation("Product {ProductId} created.", product.Id);
                 await PublishStatusEventAsync(product);
             }
-            catch (CatalogException) { throw; }  // was: swallowed
+            catch (CatalogException) { throw; }  
             catch (DbUpdateException ex)
             {
                 _logger.LogError(ex, "DB error creating product {ProductId}.", product.Id);
@@ -98,6 +101,7 @@ namespace CatalogService.Repositories
                 var products = await _context.Products
                     .Include(p => p.Category)
                     .Include(p => p.Variants)
+                    .Include(p => p.Media)
                     .ToListAsync();
 
                 _logger.LogInformation("Retrieved {Count} products.", products.Count);
@@ -106,7 +110,7 @@ namespace CatalogService.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving all products.");
-                throw;  // was: return default
+                throw;  
             }
         }
 
@@ -117,6 +121,7 @@ namespace CatalogService.Repositories
                 var product = await _context.Products
                     .Include(p => p.Category)
                     .Include(p => p.Variants)
+                    .Include(p => p.Media)
                     .FirstOrDefaultAsync(p => p.Id == id);
 
                 if (product is null)
@@ -131,7 +136,7 @@ namespace CatalogService.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving product {ProductId}.", id);
-                throw;  // was: return default
+                throw;  
             }
         }
 
@@ -141,17 +146,32 @@ namespace CatalogService.Repositories
             {
                 var product = await GetProductOrThrowAsync(id);
 
-                if (product.Status != ProductStatus.Draft)
+                if (product.Status != ProductStatus.Draft &&
+                    product.Status != ProductStatus.Rejected &&
+                    product.Status != ProductStatus.Inactive &&
+                    product.Status != ProductStatus.Active)
                 {
                     _logger.LogWarning("UpdateProductAsync: invalid status {Status} for product {ProductId}.", product.Status, id);
-                    throw new InvalidProductStatusTransitionException(product.Status, ProductStatus.Draft, "FullUpdate");  // was: commented out
+                    throw new InvalidProductStatusTransitionException(product.Status, ProductStatus.Draft, "FullUpdate");
                 }
 
+                product.Status = ProductStatus.Draft;
                 product.Name = updatedProduct.Name;
                 product.Description = updatedProduct.Description;
                 product.Price = updatedProduct.Price;
                 product.AvailableQuantity = updatedProduct.AvailableQuantity;
                 product.CategoryId = updatedProduct.CategoryId;
+                _context.ProductMedias.RemoveRange(product.Media);
+                foreach (var media in updatedProduct.Media)
+                {
+                    product.Media.Add(new ProductMedia
+                    {
+                        ProductId = product.Id,
+                        MediaUrl = media.MediaUrl,
+                        MediaType = media.MediaType
+                    });
+                }
+                product.Tags = updatedProduct.Tags;
 
                 await _context.SaveChangesAsync();
                 _logger.LogInformation("Product {ProductId} updated.", id);
@@ -170,31 +190,31 @@ namespace CatalogService.Repositories
             }
         }
 
-        public async Task<Product> SearchProductAsync(string name)
+        public async Task<List<Product>> SearchProductAsync(string query)
         {
-            if (string.IsNullOrWhiteSpace(name))
+            if (string.IsNullOrWhiteSpace(query))
             {
-                _logger.LogWarning("SearchProductAsync called with empty name.");
-                throw new ArgumentException("Search name cannot be empty.", nameof(name));
+                _logger.LogWarning("SearchProductAsync called with empty query.");
+                throw new ArgumentException("Search query cannot be empty.", nameof(query));
             }
 
             try
             {
-                var product = await _context.Products
-                    .Where(p => p.Name.ToLower().Contains(name.ToLower())
+                var products = await _context.Products
+                    .Where(p => (p.Name.Contains(query) || p.Description.Contains(query))
                              && p.Status != ProductStatus.Draft
                              && p.Status != ProductStatus.Inactive)
-                    .FirstOrDefaultAsync();
+                    .Include(p => p.Media)
+                    .ToListAsync();
 
-                if (product is null)
-                    _logger.LogWarning("No product found matching '{Name}'.", name);
+                _logger.LogInformation("Found {Count} products matching '{Query}'.", products.Count, query);
 
-                return product;
+                return products;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error searching product by name '{Name}'.", name);
-                throw;  // was: return default
+                _logger.LogError(ex, "Error searching product by query '{Query}'.", query);
+                throw;
             }
         }
 
@@ -207,6 +227,7 @@ namespace CatalogService.Repositories
                              && p.Status != ProductStatus.Draft
                              && p.Status != ProductStatus.Inactive)
                     .Include(p => p.Category)
+                    .Include(p => p.Media)
                     .ToListAsync();
 
                 _logger.LogInformation("Retrieved {Count} products for category {CategoryId}.", products.Count, categoryId);

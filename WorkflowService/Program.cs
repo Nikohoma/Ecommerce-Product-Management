@@ -7,6 +7,7 @@ using NLog.Web;
 using System.Security.Claims;
 using System.Text;
 using WorkflowService.Data;
+using WorkflowService.Middleware;
 using WorkflowServices.Services;
 
 var logger = LogManager.Setup().LoadConfigurationFromFile("nlog.config").GetCurrentClassLogger();
@@ -15,7 +16,7 @@ builder.Logging.ClearProviders();
 builder.Host.UseNLog();              
 
 builder.Services.AddScoped<WorkflowServices.Services.WorkflowService>();
-builder.Services.AddScoped<Publisher>();
+builder.Services.AddScoped<IPublisher, Publisher>();
 
 builder.Services.AddDbContext<WorkflowDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("WorkflowDb")));
@@ -44,6 +45,8 @@ builder.Services.AddAuthorization();
 // Add services to the container.
 
 builder.Services.AddControllers();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 //builder.Services.AddSwaggerGen();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -77,6 +80,7 @@ var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 
+app.UseExceptionHandler();
 app.UseSwagger();
 app.UseSwaggerUI();
 app.UseHttpsRedirection();

@@ -1,4 +1,4 @@
-﻿namespace CatalogService.Models
+namespace CatalogService.Models
 {
     public enum ProductStatus
     {
@@ -30,5 +30,7 @@
         public Category Category { get; set; } = null!;
 
         public ICollection<ProductVariant> Variants { get; set; } = new List<ProductVariant>();
+        public ICollection<ProductMedia> Media { get; set; } = new List<ProductMedia>();
+        public List<string> Tags { get; set; } = new();
     }
 }

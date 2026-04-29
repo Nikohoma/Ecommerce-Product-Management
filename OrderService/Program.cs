@@ -5,6 +5,8 @@ using Microsoft.OpenApi;
 using NLog;
 using NLog.Web;
 using OrderService.Data;
+using OrderService.Middleware;
+using OrderService.Repository;
 using OrderService.Services;
 using OrderService.Services.Messaging;
 using RabbitMQ.Client;
@@ -27,6 +29,8 @@ builder.Services.AddControllers(options =>
 {
     options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
 });
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 .AddJwtBearer(options =>
@@ -82,6 +86,7 @@ builder.Services.AddDbContext<OrderDbContext>(options =>options.UseSqlServer(bui
 
 
 builder.Services.AddScoped<IOrderService, OrderService.Services.OrderService>();
+builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 
 // Rabbit Mq Singleton Connection 
 builder.Services.AddSingleton<IConnection>(sp =>
@@ -96,7 +101,7 @@ builder.Services.AddHostedService<CartConsumer>();
 
 
 var app = builder.Build();
-
+app.UseExceptionHandler();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

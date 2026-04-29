@@ -8,7 +8,7 @@ using System.Text;
 
 namespace Auth.Services
 {
-    public class JwtService
+    public class JwtService : IJwtService
     {
         private readonly IConfiguration _config;
         private readonly ILogger<JwtService> _logger;

@@ -20,8 +20,7 @@ namespace Auth.Services
 
         public async Task SendAsync(string to, string subject, string htmlBody)
         {
-            // Resolve and validate config before touching any network resources
-            var (from, host, port, username, password) = ResolveConfig();
+            var (from, host, port, username, password) = ResolveConfig(); // REsolve and validate first
 
             MimeMessage message;
 

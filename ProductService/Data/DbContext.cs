@@ -1,4 +1,4 @@
-﻿using CatalogService.Models;
+using CatalogService.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
@@ -17,6 +17,7 @@ namespace CatalogService.Data
         public DbSet<Product> Products { get; set; }
         public DbSet<Category> Categories { get; set; }
         public DbSet<ProductVariant> ProductVariants { get; set; }
+        public DbSet<ProductMedia> ProductMedias { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -43,6 +44,19 @@ namespace CatalogService.Data
                 .HasOne(v => v.Product)
                 .WithMany(p => p.Variants)
                 .HasForeignKey(v => v.ProductId);
+
+            modelBuilder.Entity<ProductMedia>()
+                .HasOne(m => m.Product)
+                .WithMany(p => p.Media)
+                .HasForeignKey(m => m.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Product>()
+                .Property(p => p.Tags)
+                .HasConversion(
+                    v => string.Join(';', v),
+                    v => v.Split(';', StringSplitOptions.RemoveEmptyEntries).ToList()
+                );
 
 
             modelBuilder.Entity<Category>().HasData(

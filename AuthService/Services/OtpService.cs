@@ -7,7 +7,7 @@ using System.Security.Cryptography;
 
 namespace Auth.Services
 {
-    public class OtpService
+    public class OtpService : IOtpService
     {
         private readonly UserDbContext _db;
         private readonly EmailService _emailService;
@@ -52,7 +52,7 @@ namespace Auth.Services
             catch (DbUpdateException ex)
             {
                 _logger.LogError(ex, "Database error while saving OTP for {Email}", email);
-                throw new OtpPersistenceException(email, ex);
+                throw new UserPersistenceException(email, ex);
             }
             catch (Exception ex)
             {
@@ -72,7 +72,7 @@ namespace Auth.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "OTP saved but email delivery failed for {Email}", email);
-                throw new OtpEmailDeliveryException(email, ex);
+                throw new OtpDeliveryException(email, ex);
             }
         }
 
@@ -105,7 +105,7 @@ namespace Auth.Services
             catch (DbUpdateException ex)
             {
                 _logger.LogError(ex, "Database error marking OTP as used for {Email}", email);
-                throw new OtpValidationPersistenceException(email, ex);
+                throw new UserPersistenceException(email, ex);
             }
             catch (Exception ex)
             {

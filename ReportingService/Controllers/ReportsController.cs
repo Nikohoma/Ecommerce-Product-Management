@@ -66,6 +66,26 @@ namespace ReportingService.Controllers
             }
         }
 
+        [HttpGet("recent")]
+        public async Task<IActionResult> GetRecent()
+        {
+            try
+            {
+                var recent = await _service.GetRecentReportsAsync();
+                return Ok(recent);
+            }
+            catch (ReportingException ex)
+            {
+                _logger.LogError(ex, "Service error fetching recent reports");
+                return StatusCode(503, new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error fetching recent reports");
+                return StatusCode(500, new { error = "An unexpected error occurred." });
+            }
+        }
+
         [HttpGet("approved-count")]
         public async Task<IActionResult> GetApprovedCount()
         {

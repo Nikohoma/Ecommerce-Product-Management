@@ -1,11 +1,16 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 using Shared.Contracts;
 using System.Text;
 using System.Text.Json;
 using WorkflowService.Exceptions;
 
-public class Publisher
+public interface IPublisher
+{
+    Task PublishAsync(ProductWorkflowEvent message);
+}
+
+public class Publisher : IPublisher
 {
     private readonly IConfiguration _configuration;  // was public — encapsulation fix
     private readonly ILogger<Publisher> _logger;
@@ -18,7 +23,7 @@ public class Publisher
         _logger = logger;
     }
 
-    public async Task PublishAsync(ProductWorkflowEvent message)
+    public virtual async Task PublishAsync(ProductWorkflowEvent message)
     {
         // Guard — validate before any I/O
         ArgumentNullException.ThrowIfNull(message);

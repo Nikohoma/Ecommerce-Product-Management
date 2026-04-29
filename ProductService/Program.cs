@@ -29,7 +29,7 @@ builder.Services.AddSingleton<IConnection>(sp =>
     config.GetSection("RabbitMq").Bind(factory);
     return factory.CreateConnectionAsync().GetAwaiter().GetResult();
 });
-builder.Services.AddScoped<PublisherForReport>();
+builder.Services.AddScoped<IPublisherForReport, PublisherForReport>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddControllers();

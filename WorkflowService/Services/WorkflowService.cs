@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Shared.Contracts;
 using WorkflowService.Data;
@@ -9,11 +9,11 @@ namespace WorkflowServices.Services
 {
     public class WorkflowService
     {
-        private readonly Publisher _publisher;
+        private readonly IPublisher _publisher;
         private readonly WorkflowDbContext _dbContext;
         private readonly ILogger<WorkflowService> _logger;
 
-        public WorkflowService(Publisher publisher, WorkflowDbContext context, ILogger<WorkflowService> logger)
+        public WorkflowService(IPublisher publisher, WorkflowDbContext context, ILogger<WorkflowService> logger)
         {
             _publisher = publisher;
             _dbContext = context;

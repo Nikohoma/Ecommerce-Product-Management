@@ -1,0 +1,88 @@
+<div class="product-form-page container">
+  <header class="page-header">
+    <h1>{{ editMode ? 'Edit Product' : 'Add New Product' }}</h1>
+    <p>Enter the details for the {{ editMode ? 'existing' : 'new' }} product in the catalog.</p>
+  </header>
+
+  <form #productForm="ngForm" (ngSubmit)="onSubmit()" class="card form-card">
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="name">Product Name</label>
+        <input
+          type="text"
+          id="name"
+          name="name"
+          [(ngModel)]="product.name"
+          required
+          maxlength="25"
+          #name="ngModel"
+          [class.invalid]="name.invalid && name.touched"
+          placeholder="e.g. Wireless Headphones"
+        >
+        <small *ngIf="product.name.length >= 25" style="color: #f97316">Max 25 characters</small>
+      </div>
+
+      <div class="form-group">
+        <label for="price">Price ($)</label>
+        <input
+          type="number"
+          id="price"
+          name="price"
+          [(ngModel)]="product.price"
+          required
+          #price="ngModel"
+          [class.invalid]="price.invalid && price.touched"
+          placeholder="0.00"
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="categoryId">Category</label>
+        <select id="categoryId" name="categoryId" [(ngModel)]="product.categoryId" required>
+          <option [value]="1">Electronics</option>
+          <option [value]="2">Clothing</option>
+          <option [value]="3">Stationary</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="quantity">Available Quantity</label>
+        <input type="number" id="quantity" name="stock" [(ngModel)]="product.stock" required placeholder="0">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="description">Description</label>
+      <textarea id="description" name="description" [(ngModel)]="product.description" required rows="4"
+                placeholder="Describe the product features..."></textarea>
+    </div>
+
+    <div class="form-group">
+      <label for="tags">Tags (comma separated)</label>
+      <input type="text" id="tags" name="tags" [ngModel]="tagsString" (ngModelChange)="onTagsChange($event)"
+             placeholder="e.g. electronics, audio, wireless">
+    </div>
+
+    <div class="form-group">
+      <label for="mediaUrl">Product Image URL</label>
+      <input type="text" id="mediaUrl" name="mediaUrl" [(ngModel)]="singleMediaUrl"
+             placeholder="https://example.com/image.jpg">
+      <div *ngIf="singleMediaUrl" class="image-preview">
+        <p>Preview:</p>
+        <img [src]="singleMediaUrl" alt="Preview" style="max-width: 200px; border-radius: 8px; margin-top: 8px;">
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="btn-secondary" routerLink="/catalog">Cancel</button>
+      <button type="submit" class="btn-primary" [disabled]="productForm.invalid || loading">
+        {{ loading ? (editMode ? 'Updating...' : 'Saving...') : (editMode ? 'Update Product' : 'Create Product') }}
+      </button>
+    </div>
+
+    <div *ngIf="error" class="error-message">
+      {{ error }}
+    </div>
+  </form>
+</div>
+

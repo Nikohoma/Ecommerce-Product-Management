@@ -1,5 +1,7 @@
 <Solution>
+  <Project Path="../AuthService.Tests/AuthService.Tests.csproj" Id="f3336363-9707-4cbd-9ee7-9dc893de4f91" />
   <Project Path="../CartService/CartService.csproj" Id="81d7b135-b2f9-4bf1-b6d6-fc413ae5ad23" />
+  <Project Path="../CatalogService.Tests/CatalogService.Tests.csproj" Id="8fd3660f-c917-4bac-b68d-963373b7a96f" />
   <Project Path="../Gateway/Gateway.csproj" />
   <Project Path="../OrderService/OrderService.csproj" Id="b01380e7-8d19-41ef-a5f5-b816332b77ca" />
   <Project Path="../PaymentService/PaymentService.csproj" Id="a35a98d5-3fef-4e04-9e59-c7d26f882656" />

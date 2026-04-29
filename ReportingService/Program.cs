@@ -4,6 +4,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using NLog;
 using NLog.Web;
+using ReportingService.Middleware;
 using ReportingService.Repository;
 using ReportingService.Services;
 using System.Text;
@@ -17,6 +18,8 @@ builder.Host.UseNLog();
 // Add services to the container.
 
 builder.Services.AddControllers();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 builder.Services.AddHostedService<ReportConsumer>();
 builder.Services.AddDbContext<ReportingDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("ReportsDb")));
@@ -76,6 +79,7 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+app.UseExceptionHandler();
 app.UseHttpsRedirection();
 app.UseSwagger();
 app.UseSwaggerUI();

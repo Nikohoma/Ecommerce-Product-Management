@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.IdentityModel.Tokens;
 using NLog;
 using NLog.Web;
@@ -57,12 +58,28 @@ try
             };
         });
 
+    // CORS (dev): allow Angular dev server to call Gateway
+    builder.Services.AddCors(options =>
+    {
+        options.AddPolicy("DevCors", policy =>
+        {
+            policy
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowAnyOrigin();
+        });
+    });
+
     builder.Services.AddAuthorization();
+    builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+    builder.Services.AddProblemDetails();
     builder.Services.AddSwaggerForOcelot(builder.Configuration);
     //builder.Services.AddOcelot();
     builder.Services.AddOcelot().AddCacheManager(x => x.WithDictionaryHandle());
 
     var app = builder.Build();
+    app.UseCors("DevCors");
+    app.UseExceptionHandler();
     app.UseMiddleware<RequestLoggingMiddleware>();
     app.UseAuthentication();
     app.UseAuthorization();
@@ -78,7 +95,6 @@ try
 catch (Exception ex)
 {
     logger.Error(ex, "Gateway stopped due to exception");
-    throw;
 }
 finally
 {

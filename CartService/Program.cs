@@ -1,4 +1,5 @@
 using CartService.Data;
+using CartService.Middleware;
 using CartService.Repositories;
 using CartService.Services;
 using CartService.Services.Messaging;
@@ -37,6 +38,8 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.ReferenceHandler =
             System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
     });
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddDbContext<CartDbContext>(options =>
@@ -105,6 +108,7 @@ builder.Services.AddScoped<ICartService, CartService.Services.cartService>();
 builder.Services.AddScoped<IOrderPublisher, OrderPublisher>();  
 var app = builder.Build();
 
+app.UseExceptionHandler();
 app.UseSwagger();
 app.UseSwaggerUI();
 

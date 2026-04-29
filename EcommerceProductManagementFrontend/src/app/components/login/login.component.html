@@ -1,0 +1,36 @@
+<div class="login-container">
+  <div class="login-card glass">
+    <div class="login-header">
+      <h1>Welcome Back</h1>
+      <p>Login to manage your ecommerce platform</p>
+    </div>
+
+    <form (ngSubmit)="onLogin()">
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" [(ngModel)]="credentials.email" name="email" placeholder="e.g. admin@example.com" required>
+      </div>
+
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" [(ngModel)]="credentials.password" name="password" placeholder="••••••••" required>
+      </div>
+
+      <div class="error-msg" *ngIf="error">{{ error }}</div>
+
+      <button type="submit" class="btn-primary w-full" [disabled]="loading">
+        {{ loading ? 'Authenticating...' : 'Sign In' }}
+      </button>
+    </form>
+
+    <div class="role-hints">
+      <p>Demo Roles:</p>
+      <div class="hint-grid">
+        <span>Admin</span>
+        <span>Product Manager</span>
+        <span>Customer</span>
+        <span>Content Executive</span>
+      </div>
+    </div>
+  </div>
+</div>

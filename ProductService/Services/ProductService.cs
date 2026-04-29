@@ -1,4 +1,4 @@
-﻿using CatalogService.Data;
+using CatalogService.Data;
 using CatalogService.DTO.Products;
 using CatalogService.DTO.ProductVariant;
 using CatalogService.Exceptions;
@@ -31,11 +31,18 @@ namespace CatalogService.Services
 
             var newProduct = new Product
             {
+                // After creation we start in Draft state.
+                Status = ProductStatus.Draft,
                 Name = product.Name,
                 Description = product.Description,
                 Price = product.Price,
                 AvailableQuantity = product.Stock,
-                CategoryId = product.CategoryId
+                CategoryId = product.CategoryId,
+                Media = product.MediaUrls
+                    .Where(url => !string.IsNullOrWhiteSpace(url))
+                    .Select(url => new ProductMedia { MediaUrl = url.Trim(), MediaType = "image" })
+                    .ToList(),
+                Tags = product.Tags
             };
 
             await _repo.CreateProductAsync(newProduct);
@@ -61,10 +68,10 @@ namespace CatalogService.Services
             return result;
         }
 
-        public async Task<Product> SearchProduct(string name)
+        public async Task<List<Product>> SearchProduct(string name)
         {
             var find = await _repo.SearchProductAsync(name);
-            _logger.LogInformation("Search completed for '{Name}'.", name);
+            _logger.LogInformation("Search completed for '{Name}'. Found {Count} results.", name, find.Count);
             return find;
         }
 
@@ -114,11 +121,18 @@ namespace CatalogService.Services
 
             var product = new Product
             {
+                // After editing we re-open the product in Draft state.
+                Status = ProductStatus.Draft,
                 Name = updatedProduct.Name,
                 Description = updatedProduct.Description,
                 Price = updatedProduct.Price,
                 AvailableQuantity = updatedProduct.Stock,
-                CategoryId = updatedProduct.CategoryId
+                CategoryId = updatedProduct.CategoryId,
+                Media = updatedProduct.MediaUrls
+                    .Where(url => !string.IsNullOrWhiteSpace(url))
+                    .Select(url => new ProductMedia { MediaUrl = url.Trim(), MediaType = "image" })
+                    .ToList(),
+                Tags = updatedProduct.Tags
             };
 
             await _repo.UpdateProductAsync(id, product);

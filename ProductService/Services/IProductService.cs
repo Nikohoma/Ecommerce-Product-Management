@@ -1,4 +1,4 @@
-﻿using CatalogService.DTO.Products;
+using CatalogService.DTO.Products;
 using CatalogService.DTO.ProductVariant;
 using CatalogService.Models;
 
@@ -22,7 +22,7 @@ namespace CatalogService.Services
         Task UpdateProduct(int id, ProductCreateDto updatedProduct);
 
         // Search & Filter
-        Task<Product> SearchProduct(string name);
+        Task<List<Product>> SearchProduct(string name);
         Task<List<Product>> GetProductsByCategory(int categoryId);
 
         // Product Lifecycle

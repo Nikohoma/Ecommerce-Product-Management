@@ -13,81 +13,45 @@ namespace OrderService.Controllers
     [Authorize]
     public class OrderController : ControllerBase
     {
+        private readonly IOrderService _service;
         private readonly OrderDbContext _context;
         private readonly ILogger<OrderController> _logger;
         private readonly IHttpClientFactory _httpClientFactory;
 
-        public OrderController(OrderDbContext context, ILogger<OrderController> logger, IHttpClientFactory httpClientFactory)
+        public OrderController(IOrderService service, ILogger<OrderController> logger, IHttpClientFactory httpClientFactory, OrderDbContext context)
         {
-            _context = context;
+            _service = service;
             _logger = logger;
             _httpClientFactory = httpClientFactory;
-
+            _context = context;
         }
 
         // Get all orders for a user
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetOrdersByUser(string userId)
         {
-            var orders = await _context.Orders.Include(o => o.OrderItems).Where(o => o.UserId == userId).OrderByDescending(o => o.CreatedAt).ToListAsync();
-
-            var result = orders.Select(order => new OrderResponseDto
-            {
-                Id = order.Id,
-                UserId = order.UserId,
-                TotalAmount = order.TotalAmount,
-                Status = order.Status,
-                Items = order.OrderItems.Select(i => new OrderItemResponseDto
-                {
-                    ProductId = i.ProductId,
-                    Quantity = i.Quantity,
-                    Price = i.Price
-                }).ToList()
-            });
-
+            var result = await _service.GetOrdersByUser(userId);
+            _logger.LogInformation($"GetOrdersByUser() called for User Id : {userId}");
             return Ok(result);
         }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetOrder(int id)
         {
-            var order = await _context.Orders.Include(o => o.OrderItems).FirstOrDefaultAsync(o => o.Id == id);
-
-            if (order == null)
-                return NotFound();
-
-            var dto = new OrderResponseDto
-            {
-                Id = order.Id,
-                UserId = order.UserId,
-                TotalAmount = order.TotalAmount,
-                Status = order.Status,
-                Items = order.OrderItems.Select(i => new OrderItemResponseDto
-                {
-                    ProductId = i.ProductId,
-                    Quantity = i.Quantity,
-                    Price = i.Price
-                }).ToList()
-            };
+            var dto = await _service.GetOrder(id);
+            _logger.LogInformation($"GetOrdersByUser() called for Order Id : {id}");
             return Ok(dto); 
         }
 
         // Update order status (for admin)
         [HttpPut("{id}/status")]
         [Authorize("Customer")]
-        public async Task<IActionResult> UpdateOrderStatus(int id, [FromBody] string status)
+        public async Task<bool> UpdateOrderStatus(int id, [FromBody] string status)
         {
-            var order = await _context.Orders.FindAsync(id);
+            await _service.UpdateOrderStatus(id, status);
+            _logger.LogInformation($"Called UpdateOrderStatus() for Order Id : {id}. Status changed to {status}.");
 
-            if (order == null)
-                return NotFound();
-
-            order.Status = status;
-            await _context.SaveChangesAsync();
-
-            _logger.LogInformation($"Order {id} status updated to {status}");
-
-            return NoContent();
+            return true;
         }
 
         // manual order creation (for testing )
@@ -106,11 +70,9 @@ namespace OrderService.Controllers
         {
             var order = await _context.Orders.FindAsync(id);
 
-            if (order == null)
-                return NotFound();
+            if (order == null)return NotFound();
 
-            if (order.Status != "Pending")
-                return BadRequest("Order already processed");
+            if (order.Status != "Pending") return BadRequest("Order already processed");
 
             var client = _httpClientFactory.CreateClient("PaymentService");
 
@@ -120,10 +82,7 @@ namespace OrderService.Controllers
                 Amount = order.TotalAmount
             };
 
-            var response = await client.PostAsJsonAsync(
-                "/api/payment/create-order",
-                paymentRequest
-            );
+            var response = await client.PostAsJsonAsync("/api/payment/create-order",paymentRequest);
 
             if (!response.IsSuccessStatusCode)
                 return StatusCode(500, "Payment service error");

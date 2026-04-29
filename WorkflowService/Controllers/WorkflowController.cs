@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using WorkflowService.Exceptions;
 using WorkflowServices.Services;
 
 namespace WorkflowService.Controllers
@@ -40,48 +39,21 @@ namespace WorkflowService.Controllers
             var normalizedStatus = status.Trim().ToLower();
 
             _logger.LogInformation("Workflow action '{Status}' requested — ProductId: {ProductId}, User: {User}",normalizedStatus, productId, name);
+            if (normalizedStatus == "submit")
+                await _service.SubmitAsync(productId, name);
+            else if (normalizedStatus == "approve")
+                await _service.ApproveAsync(productId, name);
+            else
+                await _service.RejectAsync(productId, name);
 
-            try
-            {
-                var task = normalizedStatus switch
-                {
-                    "submit" => _service.SubmitAsync(productId, name),
-                    "approve" => _service.ApproveAsync(productId, name),
-                    "reject" => _service.RejectAsync(productId, name),
-                    _ => throw new InvalidOperationException($"Unhandled status: {normalizedStatus}")
-                };
+            _logger.LogInformation("Workflow action '{Status}' succeeded — ProductId: {ProductId}, User: {User}",normalizedStatus, productId, name);
 
-                await task;
-
-                _logger.LogInformation("Workflow action '{Status}' succeeded — ProductId: {ProductId}, User: {User}",normalizedStatus, productId, name);
-
-                return Ok(new
-                {
-                    productId,
-                    status = normalizedStatus,
-                    updatedBy = name
-                });
-            }
-            catch (WorkflowLogException ex)
+            return Ok(new
             {
-                _logger.LogError(ex,"Workflow log persistence failed for ProductId {ProductId}",productId);
-                return StatusCode(503, new { error = ex.Message });
-            }
-            catch (WorkflowPublishException ex)
-            {
-                _logger.LogError(ex,"Workflow event publish failed for ProductId {ProductId}",productId);
-                return StatusCode(503, new { error = ex.Message });
-            }
-            catch (WorkflowException ex)
-            {
-                _logger.LogError(ex,"Workflow error for ProductId {ProductId}",productId);
-                return StatusCode(503, new { error = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,"Unexpected error processing workflow action for ProductId {ProductId}",productId);
-                return StatusCode(500, new { error = "An unexpected error occurred." });
-            }
+                productId,
+                status = normalizedStatus,
+                updatedBy = name
+            });
         }
     }
 }

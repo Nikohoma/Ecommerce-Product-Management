@@ -17,102 +17,26 @@ namespace Auth.Repository
             _logger = logger;
         }
 
-        public async Task<bool> EmailExistsAsync(string email)
-        {
-            try
-            {
-                return await _db.Users.AnyAsync(u => u.Email == email);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error checking email existence for {Email}", email);
-                throw new UserPersistenceException("EmailExistsCheck", ex);
-            }
-        }
+        public Task<bool> EmailExistsAsync(string email) =>ExecuteAsync(() => _db.Users.AnyAsync(u => u.Email == email),"EmailExistsCheck",("Email", email));
 
-        public async Task<bool> UsernameExistsAsync(string name)
-        {
-            try
-            {
-                return await _db.Users.AnyAsync(u => u.Name == name);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error checking username existence for {Name}", name);
-                throw new UserPersistenceException("UsernameExistsCheck", ex);
-            }
-        }
+        public Task<bool> UsernameExistsAsync(string name) =>ExecuteAsync(() => _db.Users.AnyAsync(u => u.Name == name),"UsernameExistsCheck",("Name", name));
 
-        public async Task<User?> GetByEmailAsync(string email)
-        {
-            try
-            {
-                return await _db.Users.FirstOrDefaultAsync(u => u.Email == email);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error fetching user by email {Email}", email);
-                throw new UserPersistenceException("GetByEmail", ex);
-            }
-        }
+        public Task<User?> GetByEmailAsync(string email) =>ExecuteAsync(() => _db.Users.FirstOrDefaultAsync(u => u.Email == email),"GetByEmail",("Email", email));
 
-        public async Task AddUserAsync(User user)
-        {
-            try
-            {
-                await _db.Users.AddAsync(user);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error adding user {Email}", user.Email);
-                throw new UserPersistenceException("AddUser", ex);
-            }
-        }
+        public Task AddUserAsync(User user) =>ExecuteAsync(async () => await _db.Users.AddAsync(user),"AddUser",("Email", user.Email));
 
-        public async Task AddRefreshTokenAsync(RefreshToken token)
-        {
-            try
-            {
-                await _db.RefreshTokens.AddAsync(token);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error adding refresh token for UserId {UserId}", token.UserId);
-                throw new UserPersistenceException("AddRefreshToken", ex);
-            }
-        }
 
-        public async Task<RefreshToken?> GetValidRefreshTokenAsync(string token)
-        {
-            try
-            {
-                return await _db.RefreshTokens.Include(r => r.User).FirstOrDefaultAsync(r =>r.Token == token &&!r.IsRevoked &&r.ExpiresAt > DateTime.UtcNow);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving refresh token");
-                throw new UserPersistenceException("GetValidRefreshToken", ex);
-            }
-        }
+        public Task AddRefreshTokenAsync(RefreshToken token) =>ExecuteAsync(async () => await _db.RefreshTokens.AddAsync(token),"AddRefreshToken",("UserId", token.UserId));
 
-        public Task RevokeAllUserTokensAsync(int userId)
-        {
-            try
-            {
-                var tokens = _db.RefreshTokens.Where(t => t.UserId == userId && !t.IsRevoked);
+        public Task<RefreshToken?> GetValidRefreshTokenAsync(string token) =>ExecuteAsync(() => _db.RefreshTokens.Include(r => r.User).FirstOrDefaultAsync(r =>r.Token == token &&!r.IsRevoked &&r.ExpiresAt > DateTime.UtcNow),"GetValidRefreshToken");
 
-                foreach (var t in tokens)
-                    t.IsRevoked = true;
-
+        public Task RevokeAllUserTokensAsync(int userId) =>ExecuteAsync(async () =>{var tokens = await _db.RefreshTokens.Where(t => t.UserId == userId && !t.IsRevoked).ToListAsync();
+                foreach (var t in tokens) { t.IsRevoked = true; }
                 _logger.LogInformation("Revoked all tokens for UserId {UserId}", userId);
-                return Task.CompletedTask;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error revoking tokens for UserId {UserId}", userId);
-                throw new TokenRevocationException(userId, ex);
-            }
-        }
+            },
+            "RevokeAllUserTokens",
+            ("UserId", userId));
+
 
         public async Task SaveAsync()
         {
@@ -129,6 +53,49 @@ namespace Auth.Repository
             {
                 _logger.LogError(ex, "Unexpected error during save");
                 throw new UserPersistenceException("SaveChanges", ex);
+            }
+        }
+
+        private async Task<T> ExecuteAsync<T>(
+            Func<Task<T>> action,
+            string operation,
+            params (string Key, object Value)[] context)
+        {
+            try
+            {
+                return await action();
+            }
+            catch (Exception ex)
+            {
+                LogError(ex, operation, context); throw new UserPersistenceException(operation, ex);
+            }
+        }
+
+        private async Task ExecuteAsync(
+            Func<Task> action,
+            string operation,
+            params (string Key, object Value)[] context)
+        {
+            try
+            {
+                await action();
+            }
+            catch (Exception ex)
+            {
+                LogError(ex, operation, context); throw new UserPersistenceException(operation, ex);
+            }
+        }
+
+        private void LogError(Exception ex, string operation, params (string Key, object Value)[] context)
+        {
+            if (context.Length > 0)
+            {
+                var contextData = string.Join(", ", context.Select(c => $"{c.Key}: {c.Value}"));
+                _logger.LogError(ex, "Error in {Operation} | {Context}", operation, contextData);
+            }
+            else
+            {
+                _logger.LogError(ex, "Error in {Operation}", operation);
             }
         }
     }

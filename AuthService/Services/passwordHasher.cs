@@ -1,9 +1,10 @@
-﻿using System.Security.Cryptography;
+﻿using Auth.Services;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace ECommerceProductManagement.Services
 {
-    public class PasswordHasher
+    public class PasswordHasher : IPasswordHasher
     {
         private const int SaltSize = 16; // 128-bit
         private const int KeySize = 32;  // 256-bit

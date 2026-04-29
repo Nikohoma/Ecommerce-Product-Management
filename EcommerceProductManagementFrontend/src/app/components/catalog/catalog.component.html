@@ -1,0 +1,80 @@
+<div class="catalog-page container">
+  <header class="section-header">
+    <div>
+      <h1>Product Catalog</h1>
+      <p>Browse and manage the product lifecycle</p>
+    </div>
+    <div class="search-bar">
+      <input type="text" [(ngModel)]="searchQuery" (input)="onSearch()" placeholder="Search products or tags...">
+    </div>
+  </header>
+
+  <div class="grid-catalog">
+    <div class="product-card card" *ngFor="let p of visibleProducts">
+      <div class="product-image">
+        <img [src]="p.media?.[0]?.mediaUrl || 'https://via.placeholder.com/300x200?text=No+Image'" alt="Product">
+      </div>
+
+      <div class="product-body">
+        <div class="product-main">
+          <h3>{{ p.name }}</h3>
+          <p class="description">{{ p.description }}</p>
+        </div>
+
+        <div class="product-meta">
+          <span class="price">{{ p.price | currency }}</span>
+          <span *ngIf="role !== 'Customer'" class="stock" [class.low]="p.availableQuantity < 5">
+            {{ p.availableQuantity }} in stock
+          </span>
+        </div>
+
+        <div class="tags" *ngIf="p.tags?.length">
+          <span class="tag" *ngFor="let tag of p.tags">#{{ tag }}</span>
+        </div>
+
+        <!-- Role Based Actions -->
+        <div class="product-actions" [ngSwitch]="role">
+
+          <!-- ADMIN: Workflow Management -->
+          <div *ngSwitchCase="'Admin'" class="action-group">
+            <button (click)="openStatusModal(p.id)" class="btn-sm btn-outline">Change Status</button>
+            <button (click)="editProduct(p.id)" class="btn-sm btn-outline">Edit</button>
+          </div>
+
+          <!-- PRODUCT MANAGER: Logistics -->
+          <div *ngSwitchCase="'Product Manager'" class="action-group">
+            <button class="btn-sm btn-outline">Adjust Stock</button>
+            <button class="btn-sm btn-outline">Update Price</button>
+          </div>
+
+          <!-- CONTENT EXECUTIVE: Messaging -->
+          <div *ngSwitchCase="'Content Executive'" class="action-group">
+            <button class="btn-sm btn-outline">Edit Content</button>
+            <button class="btn-sm btn-outline">Manage Media</button>
+          </div>
+
+          <!-- CUSTOMER: Shopping -->
+          <div *ngSwitchCase="'Customer'" class="action-group">
+            <button class="btn-sm btn-primary w-full">Add to Cart</button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div *ngIf="showStatusModal" class="modal-backdrop">
+  <div class="modal-card">
+    <h3>Change Product Status</h3>
+    <select [(ngModel)]="selectedStatusAction">
+      <option value="submit">Submitted</option>
+      <option value="approve">Active</option>
+      <option value="reject">Rejected</option>
+    </select>
+    <div class="modal-actions">
+      <button class="btn-sm btn-outline" (click)="closeStatusModal()">Cancel</button>
+      <button class="btn-sm btn-success" (click)="applyStatusChange()">Apply</button>
+    </div>
+  </div>
+</div>

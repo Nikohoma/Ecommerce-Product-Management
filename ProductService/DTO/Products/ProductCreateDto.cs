@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace CatalogService.DTO.Products
 {
@@ -13,5 +13,7 @@ namespace CatalogService.DTO.Products
         [Required]
         public int Stock { get; set; }
         public int CategoryId { get; set; }
+        public List<string> MediaUrls { get; set; } = new();
+        public List<string> Tags { get; set; } = new();
     }
 }

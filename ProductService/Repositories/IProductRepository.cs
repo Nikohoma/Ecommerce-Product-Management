@@ -1,19 +1,10 @@
-﻿using CatalogService.DTO.Products;
+using CatalogService.DTO.Products;
 using CatalogService.Models;
 
 namespace CatalogService.Repositories
 {
     public interface IProductRepository
     {
-        //Task<List<Product>> GetAllProductsAsync();
-        //Task CreateProductAsync(Product product);
-        //Task DeleteProductAsync(int id);
-        //Task<Product> GetProductDetailsAsync(int id);
-        //Task UpdateProductAsync(int id, Product updatedProduct);
-        //Task<Product> SearchProductAsync(string name);
-        //Task<List<Product>> GetProductsByCategoryAsync(int categoryId);
-
-        //Task SubmitProduct(int productId);
 
         // Basic CRUD
         Task<List<Product>> GetAllProductsAsync();
@@ -23,7 +14,7 @@ namespace CatalogService.Repositories
         Task UpdateProductAsync(int id, Product updatedProduct);
 
         // Search & Filter
-        Task<Product> SearchProductAsync(string name);
+        Task<List<Product>> SearchProductAsync(string name);
         Task<List<Product>> GetProductsByCategoryAsync(int categoryId);
 
         // Product Lifecycle

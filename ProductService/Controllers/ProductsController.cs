@@ -74,6 +74,33 @@ public class ProductsController : ControllerBase
         }
     }
 
+    [HttpGet("categories")]
+    public async Task<IActionResult> GetCategories()
+    {
+        var categories = await _service.GetCategories();
+        return Ok(categories);
+    }
+
+    [HttpPost("categories")]
+    [Authorize(Roles = "Admin,ProductManager")]
+    public async Task<IActionResult> CreateCategory([FromBody] CategoryCreateDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Name))
+        {
+            return BadRequest("Category name is required.");
+        }
+
+        try
+        {
+            var created = await _service.CreateCategory(dto.Name);
+            return Ok(created);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ex.Message);
+        }
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetProducts([FromQuery] string? search,[FromQuery] int? categoryId)
     {

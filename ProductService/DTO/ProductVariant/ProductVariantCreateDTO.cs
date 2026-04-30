@@ -19,5 +19,8 @@ namespace CatalogService.DTO.ProductVariant
         public int Stock { get; set; }
 
         public string? Attributes { get; set; }
+
+        [Url(ErrorMessage = "ImageUrl must be a valid URL.")]
+        public string? ImageUrl { get; set; }
     }
 }

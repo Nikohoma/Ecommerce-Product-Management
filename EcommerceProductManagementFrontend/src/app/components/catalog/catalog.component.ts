@@ -1,6 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ProductService, Product } from '../../services/product.service';
+import { ProductService, Product, ProductVariant } from '../../services/product.service';
 import { AuthService } from '../../services/auth.service';
 import { WorkflowService } from '../../services/workflow.service';
 import { FormsModule } from '@angular/forms';
@@ -162,6 +162,59 @@ import { RouterLink, Router } from '@angular/router';
       gap: 8px;
       justify-content: flex-end;
     }
+    .details-modal {
+      max-width: 640px;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+    .details-description {
+      color: #334155;
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+    .variants-section h4 {
+      margin: 0 0 10px;
+      color: #1e293b;
+      font-size: 0.95rem;
+    }
+    .variants-list {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .variant-item {
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: #f8fafc;
+    }
+    .variant-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      color: #334155;
+      font-size: 0.875rem;
+    }
+    .variant-attr {
+      margin-top: 6px;
+      color: #64748b;
+      font-size: 0.8rem;
+      word-break: break-word;
+    }
+    .variant-preview {
+      margin-top: 8px;
+      width: 100%;
+      max-height: 180px;
+      object-fit: contain;
+      border-radius: 8px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+    }
+    .empty-variants {
+      color: #64748b;
+      font-size: 0.875rem;
+      margin-bottom: 16px;
+    }
   `]
 })
 export class CatalogComponent implements OnInit {
@@ -178,6 +231,10 @@ export class CatalogComponent implements OnInit {
   showStatusModal = false;
   selectedProductId: number | null = null;
   selectedStatusAction = 'submit';
+  showDetailsModal = false;
+  detailsLoading = false;
+  selectedProductForDetails: Product | null = null;
+  selectedProductVariants: ProductVariant[] = [];
 
   ngOnInit() {
     this.role = this.authService.getRole();
@@ -234,6 +291,57 @@ export class CatalogComponent implements OnInit {
     if (this.selectedProductId == null) return;
     this.onWorkflow(this.selectedProductId, this.selectedStatusAction);
     this.closeStatusModal();
+  }
+
+  openDetailsModal(product: Product) {
+    this.selectedProductForDetails = product;
+    this.selectedProductVariants = [];
+    this.detailsLoading = true;
+    this.showDetailsModal = true;
+
+    this.productService.getVariantsByProduct(product.id).subscribe({
+      next: (variants) => {
+        this.selectedProductVariants = variants || [];
+        this.detailsLoading = false;
+      },
+      error: () => {
+        this.selectedProductVariants = [];
+        this.detailsLoading = false;
+      }
+    });
+  }
+
+  closeDetailsModal() {
+    this.showDetailsModal = false;
+    this.selectedProductForDetails = null;
+    this.selectedProductVariants = [];
+    this.detailsLoading = false;
+  }
+
+  getVariantAttributesText(attributes: string): string {
+    if (!attributes) return '';
+    try {
+      const parsed = JSON.parse(attributes);
+      if (parsed && typeof parsed === 'object') {
+        return parsed.details || '';
+      }
+    } catch {
+      return attributes;
+    }
+    return '';
+  }
+
+  getVariantImageUrl(attributes: string): string {
+    if (!attributes) return '';
+    try {
+      const parsed = JSON.parse(attributes);
+      if (parsed && typeof parsed === 'object') {
+        return parsed.imageUrl || '';
+      }
+    } catch {
+      return '';
+    }
+    return '';
   }
 
   // Navigate to edit product page

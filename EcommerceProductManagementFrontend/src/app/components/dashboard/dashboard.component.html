@@ -1,5 +1,10 @@
 <div class="dashboard-page container">
-  <header class="page-header">
+  <header class="page-header" *ngIf="role == 'Customer'">
+    <h1>Welcome, {{ (authService.user$ | async)?.name }}</h1>
+    <p>What's on your mind today?</p>
+  </header>
+
+  <header class="page-header" *ngIf="role !== 'Customer'">
     <h1>Welcome, {{ (authService.user$ | async)?.name }}</h1>
     <p>Here's what's happening in your catalog today.</p>
   </header>
@@ -8,7 +13,11 @@
   <div class="kpi-grid" *ngIf="role !== 'Customer' && dashboardData">
     <div class="kpi-card card">
       <div class="kpi-icon pending">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <polyline points="12 6 12 12 16 14" />
+        </svg>
       </div>
       <div class="kpi-info">
         <h3>{{ dashboardData.pending }}</h3>
@@ -18,7 +27,11 @@
 
     <div class="kpi-card card">
       <div class="kpi-icon approved">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+          <polyline points="22 4 12 14.01 9 11.01" />
+        </svg>
       </div>
       <div class="kpi-info">
         <h3>{{ dashboardData.approved }}</h3>
@@ -28,7 +41,12 @@
 
     <div class="kpi-card card">
       <div class="kpi-icon rejected">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="15" y1="9" x2="9" y2="15" />
+          <line x1="9" y1="9" x2="15" y2="15" />
+        </svg>
       </div>
       <div class="kpi-info">
         <h3>{{ dashboardData.rejected }}</h3>
@@ -38,10 +56,14 @@
 
     <div class="kpi-card card">
       <div class="kpi-icon value">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="1" x2="12" y2="23" />
+          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+        </svg>
       </div>
       <div class="kpi-info">
-        <h3>{{ dashboardData.totalInventoryValue | currency }}</h3>
+        <h3>{{ dashboardData.totalInventoryValue | currency:"INR" }}</h3>
         <p>Inventory Value</p>
       </div>
     </div>

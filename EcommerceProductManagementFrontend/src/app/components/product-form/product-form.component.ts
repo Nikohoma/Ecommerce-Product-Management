@@ -3,7 +3,15 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { ActivatedRoute } from '@angular/router';
-import { ProductService } from '../../services/product.service';
+import { ProductService, Category } from '../../services/product.service';
+
+interface VariantFormModel {
+  sku: string;
+  price: number;
+  stock: number;
+  attributes: string;
+  imageUrl: string;
+}
 
 @Component({
   selector: 'app-product-form',
@@ -62,6 +70,79 @@ import { ProductService } from '../../services/product.service';
       font-size: 0.875rem;
       text-align: center;
     }
+    .split-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .inline-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 8px;
+    }
+    .images-list, .variants-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .image-chip, .variant-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 10px;
+      background: #f8fafc;
+    }
+    .image-chip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .image-preview, .variant-preview {
+      width: 80px;
+      height: 80px;
+      border-radius: 8px;
+      object-fit: cover;
+      background: #e2e8f0;
+      border: 1px solid #cbd5e1;
+      flex-shrink: 0;
+    }
+    .image-url {
+      font-size: 0.8rem;
+      color: #475569;
+      word-break: break-all;
+      flex: 1;
+    }
+    .btn-danger-outline {
+      border: 1px solid #ef4444;
+      color: #dc2626;
+      background: #fff;
+    }
+    .btn-danger-outline:hover {
+      background: #fef2f2;
+    }
+    .sub-header {
+      margin-top: 20px;
+      margin-bottom: 6px;
+      font-size: 0.95rem;
+      color: #334155;
+      font-weight: 700;
+    }
+    .category-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+    }
+    .inline-category {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .inline-note {
+      color: #64748b;
+      font-size: 0.8rem;
+    }
   `]
 })
 export class ProductFormComponent implements OnInit {
@@ -76,15 +157,19 @@ export class ProductFormComponent implements OnInit {
     stock: 0,
     categoryId: 1,
     tags: [] as string[],
-    mediaUrls: [] as string[]
+    mediaUrls: [] as string[],
+    variants: [] as VariantFormModel[]
   };
 
   tagsString = '';
-  singleMediaUrl = '';
+  mediaUrlInput = '';
   loading = false;
   error = '';
   editMode = false;
   productId?: number;
+  categories: Category[] = [];
+  newCategoryName = '';
+  addingCategory = false;
 
   onTagsChange(value: string) {
     this.tagsString = value;
@@ -92,6 +177,7 @@ export class ProductFormComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.loadCategories();
     const idParam = this.route.snapshot.paramMap.get('id');
     if (idParam) {
       this.editMode = true;
@@ -105,29 +191,99 @@ export class ProductFormComponent implements OnInit {
           stock: p.availableQuantity ?? 0,
           categoryId: p.categoryId,
           tags: p.tags ?? [],
-          mediaUrls: p.media?.map(m => m.mediaUrl) ?? []
+          mediaUrls: p.media?.map(m => m.mediaUrl) ?? [],
+          variants: (p.variants ?? []).map(v => this.mapVariantFromApi(v))
         };
         this.tagsString = this.product.tags.join(', ');
-        this.singleMediaUrl = this.product.mediaUrls[0] || '';
       }, err => {
         this.error = 'Failed to load product for editing.';
       });
     }
   }
 
+  loadCategories() {
+    this.productService.getCategories().subscribe({
+      next: (categories) => {
+        this.categories = categories || [];
+        if (!this.categories.some(c => c.id === this.product.categoryId) && this.categories.length) {
+          this.product.categoryId = this.categories[0].id;
+        }
+      }
+    });
+  }
+
+  addCategory() {
+    const categoryName = this.newCategoryName.trim();
+    if (!categoryName || this.addingCategory) return;
+
+    this.addingCategory = true;
+    this.productService.createCategory(categoryName).subscribe({
+      next: (created) => {
+        this.newCategoryName = '';
+        this.product.categoryId = created.id;
+        this.loadCategories();
+        this.addingCategory = false;
+      },
+      error: (err) => {
+        this.error = err?.error || err?.error?.message || 'Failed to create category.';
+        this.addingCategory = false;
+      }
+    });
+  }
+
+  addMediaUrl() {
+    const trimmed = this.mediaUrlInput.trim();
+    if (!trimmed) return;
+    if (!this.product.mediaUrls.includes(trimmed)) {
+      this.product.mediaUrls.push(trimmed);
+    }
+    this.mediaUrlInput = '';
+  }
+
+  removeMediaUrl(url: string) {
+    this.product.mediaUrls = this.product.mediaUrls.filter(u => u !== url);
+  }
+
+  addVariant() {
+    this.product.variants.push({
+      sku: '',
+      price: 0,
+      stock: 0,
+      attributes: '',
+      imageUrl: ''
+    });
+  }
+
+  removeVariant(index: number) {
+    this.product.variants.splice(index, 1);
+  }
+
   onSubmit() {
     this.loading = true;
     this.error = '';
-
-    // Ensure mediaUrls contains the entered image URL
-    if (this.singleMediaUrl) {
-      this.product.mediaUrls = [this.singleMediaUrl];
-    } else {
+    if (this.mediaUrlInput.trim()) {
+      this.addMediaUrl();
+    }
+    if (!this.product.mediaUrls.length) {
       this.product.mediaUrls = ['https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80'];
     }
 
+    const payload = {
+      ...this.product,
+      variants: this.product.variants
+        .filter(v => v.sku.trim() !== '')
+        .map(v => ({
+          productId: this.productId ?? 0,
+          sku: v.sku.trim(),
+          price: Number(v.price) || 0,
+          stock: Number(v.stock) || 0,
+          attributes: v.attributes?.trim() || '',
+          imageUrl: v.imageUrl?.trim() || ''
+        }))
+    };
+
     if (this.editMode && this.productId != null) {
-      this.productService.updateProduct(this.productId, this.product).subscribe({
+      this.productService.updateProduct(this.productId, payload).subscribe({
         next: () => this.router.navigate(['/catalog']),
         error: err => {
           console.error('Update product error:', err);
@@ -136,7 +292,7 @@ export class ProductFormComponent implements OnInit {
         }
       });
     } else {
-      this.productService.createProduct(this.product).subscribe({
+      this.productService.createProduct(payload).subscribe({
         next: () => this.router.navigate(['/catalog']),
         error: err => {
           console.error('Create product error:', err);
@@ -145,5 +301,32 @@ export class ProductFormComponent implements OnInit {
         }
       });
     }
+  }
+
+  private mapVariantFromApi(variant: any): VariantFormModel {
+    let attributes = '';
+    let imageUrl = '';
+
+    if (typeof variant?.attributes === 'string' && variant.attributes.trim()) {
+      try {
+        const parsed = JSON.parse(variant.attributes);
+        if (parsed && typeof parsed === 'object') {
+          attributes = parsed.details || '';
+          imageUrl = parsed.imageUrl || '';
+        } else {
+          attributes = variant.attributes;
+        }
+      } catch {
+        attributes = variant.attributes;
+      }
+    }
+
+    return {
+      sku: variant?.sku || '',
+      price: Number(variant?.price) || 0,
+      stock: Number(variant?.stock) || 0,
+      attributes,
+      imageUrl
+    };
   }
 }

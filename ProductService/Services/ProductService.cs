@@ -5,6 +5,7 @@ using CatalogService.Exceptions;
 using CatalogService.Models;
 using CatalogService.Repositories;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace CatalogService.Services
 {
@@ -42,7 +43,16 @@ namespace CatalogService.Services
                     .Where(url => !string.IsNullOrWhiteSpace(url))
                     .Select(url => new ProductMedia { MediaUrl = url.Trim(), MediaType = "image" })
                     .ToList(),
-                Tags = product.Tags
+                Tags = product.Tags,
+                Variants = product.Variants
+                    .Select(v => new ProductVariant
+                    {
+                        SKU = v.SKU,
+                        Price = v.Price,
+                        Stock = v.Stock,
+                        Attributes = BuildVariantAttributesPayload(v.Attributes, v.ImageUrl)
+                    })
+                    .ToList()
             };
 
             await _repo.CreateProductAsync(newProduct);
@@ -79,6 +89,32 @@ namespace CatalogService.Services
         {
             _logger.LogInformation("Fetching products for Category {CategoryId}.", categoryId);
             return await _repo.GetProductsByCategoryAsync(categoryId);
+        }
+
+        public async Task<List<Category>> GetCategories()
+        {
+            _logger.LogInformation("Fetching all categories.");
+            return await _repo.GetCategoriesAsync();
+        }
+
+        public async Task<Category> CreateCategory(string name)
+        {
+            var trimmed = name?.Trim();
+            if (string.IsNullOrWhiteSpace(trimmed))
+            {
+                throw new ArgumentException("Category name is required.", nameof(name));
+            }
+
+            var existing = await _repo.GetCategoriesAsync();
+            if (existing.Any(c => c.Name.ToLower() == trimmed.ToLower()))
+            {
+                throw new InvalidOperationException("Category already exists.");
+            }
+
+            var category = new Category { Name = trimmed };
+            var created = await _repo.CreateCategoryAsync(category);
+            _logger.LogInformation("Category '{CategoryName}' created.", trimmed);
+            return created;
         }
 
         public async Task SubmitProduct(int productId)
@@ -132,7 +168,16 @@ namespace CatalogService.Services
                     .Where(url => !string.IsNullOrWhiteSpace(url))
                     .Select(url => new ProductMedia { MediaUrl = url.Trim(), MediaType = "image" })
                     .ToList(),
-                Tags = updatedProduct.Tags
+                Tags = updatedProduct.Tags,
+                Variants = updatedProduct.Variants
+                    .Select(v => new ProductVariant
+                    {
+                        SKU = v.SKU,
+                        Price = v.Price,
+                        Stock = v.Stock,
+                        Attributes = BuildVariantAttributesPayload(v.Attributes, v.ImageUrl)
+                    })
+                    .ToList()
             };
 
             await _repo.UpdateProductAsync(id, product);
@@ -155,7 +200,7 @@ namespace CatalogService.Services
                 SKU = variantDto.SKU,
                 Price = variantDto.Price,
                 Stock = variantDto.Stock,
-                Attributes = variantDto.Attributes
+                Attributes = BuildVariantAttributesPayload(variantDto.Attributes, variantDto.ImageUrl)
             };
 
             await _repo.CreateVariantAsync(variant);
@@ -181,7 +226,7 @@ namespace CatalogService.Services
                 SKU = updatedVariant.SKU,
                 Price = updatedVariant.Price,
                 Stock = updatedVariant.Stock,
-                Attributes = updatedVariant.Attributes
+                Attributes = BuildVariantAttributesPayload(updatedVariant.Attributes, updatedVariant.ImageUrl)
             };
 
             await _repo.UpdateVariantAsync(variantId, variant);
@@ -210,6 +255,22 @@ namespace CatalogService.Services
         {
             await _repo.DeductVariantStockAsync(variantId, quantity);
             _logger.LogInformation("Deducted {Quantity} units from Variant {VariantId}.", quantity, variantId);
+        }
+
+        private static string? BuildVariantAttributesPayload(string? attributes, string? imageUrl)
+        {
+            if (string.IsNullOrWhiteSpace(attributes) && string.IsNullOrWhiteSpace(imageUrl))
+            {
+                return attributes;
+            }
+
+            var payload = new
+            {
+                details = string.IsNullOrWhiteSpace(attributes) ? null : attributes,
+                imageUrl = string.IsNullOrWhiteSpace(imageUrl) ? null : imageUrl.Trim()
+            };
+
+            return JsonSerializer.Serialize(payload);
         }
     }
 }

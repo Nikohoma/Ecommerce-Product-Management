@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
+import { ThemeService } from '../../services/theme.service';
 
 @Component({
   selector: 'app-navbar',
@@ -32,6 +33,9 @@ import { AuthService } from '../../services/auth.service';
       color: #1e293b;
       cursor: pointer;
     }
+    :host-context(body.dark-mode) .brand {
+      color: #f8fafc;
+    }
     .logo {
       width: 36px;
       height: 36px;
@@ -55,8 +59,15 @@ import { AuthService } from '../../services/auth.service';
       font-size: 0.9375rem;
       transition: color 0.2s;
     }
+    :host-context(body.dark-mode) .nav-links a {
+      color: #cbd5e1;
+    }
     .nav-links a:hover, .nav-links a.active {
       color: #6366f1;
+    }
+    :host-context(body.dark-mode) .nav-links a:hover,
+    :host-context(body.dark-mode) .nav-links a.active {
+      color: #a5b4fc;
     }
     .user-actions {
       display: flex;
@@ -77,10 +88,17 @@ import { AuthService } from '../../services/auth.service';
       border-radius: 4px;
       color: #475569;
     }
+    :host-context(body.dark-mode) .role-badge {
+      background: #334155;
+      color: #cbd5e1;
+    }
     .user-name {
       font-size: 0.875rem;
       font-weight: 600;
       color: #1e293b;
+    }
+    :host-context(body.dark-mode) .user-name {
+      color: #f8fafc;
     }
     .btn-logout {
       background: transparent;
@@ -88,12 +106,42 @@ import { AuthService } from '../../services/auth.service';
       padding: 8px;
       border-radius: 10px;
     }
+    :host-context(body.dark-mode) .btn-logout {
+      color: #cbd5e1;
+    }
     .btn-logout:hover {
       background: #fee2e2;
       color: #ef4444;
+    }
+    .btn-theme-toggle {
+      background: transparent;
+      color: #94a3b8;
+      padding: 8px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    :host-context(body.dark-mode) .btn-theme-toggle {
+      color: #cbd5e1;
+    }
+    .btn-theme-toggle:hover {
+      background: rgba(99, 102, 241, 0.1);
+      color: #6366f1;
+    }
+    :host-context(body.dark-mode) .btn-theme-toggle:hover {
+      background: rgba(165, 180, 252, 0.1);
+      color: #a5b4fc;
     }
   `]
 })
 export class NavbarComponent {
   authService = inject(AuthService);
+  themeService = inject(ThemeService);
+
+  isDarkMode$ = this.themeService.darkMode$;
+
+  toggleTheme(): void {
+    this.themeService.toggleDarkMode();
+  }
 }

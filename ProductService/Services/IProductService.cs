@@ -24,6 +24,8 @@ namespace CatalogService.Services
         // Search & Filter
         Task<List<Product>> SearchProduct(string name);
         Task<List<Product>> GetProductsByCategory(int categoryId);
+        Task<List<Category>> GetCategories();
+        Task<Category> CreateCategory(string name);
 
         // Product Lifecycle
         Task SubmitProduct(int productId);           // Draft → Submitted

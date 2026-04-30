@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using CatalogService.DTO.ProductVariant;
 
 namespace CatalogService.DTO.Products
 {
@@ -15,5 +16,6 @@ namespace CatalogService.DTO.Products
         public int CategoryId { get; set; }
         public List<string> MediaUrls { get; set; } = new();
         public List<string> Tags { get; set; } = new();
+        public List<ProductVariantCreateDto> Variants { get; set; } = new();
     }
 }

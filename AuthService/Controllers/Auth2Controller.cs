@@ -57,6 +57,29 @@ namespace AuthService.Controllers
             return Ok(new{token = access, refreshToken = refresh});
         }
 
+        // Customer registration endpoint for frontend. Keeps /register/verify unchanged.
+        [HttpPost("register/customer/verify")]
+        public async Task<IActionResult> CustomerRegisterVerifyCustomer([FromBody] RegisterCustomer dto)
+        {
+            if (!await _auth.ValidateOtpAsync(dto.Email, dto.Otp, "register"))
+            {
+                _logger.LogWarning("Invalid/expired register OTP for {Email}", dto.Email);
+                return BadRequest("Invalid or expired OTP.");
+            }
+
+            if (await _auth.UsernameExistsAsync(dto.Name))
+            {
+                _logger.LogWarning("Username already taken: {Name}", dto.Name);
+                return Conflict("Username already taken.");
+            }
+
+            var (access, refresh) = await _auth.RegisterAsync(dto.Name, dto.Email, dto.Password, "Customer");
+
+            _logger.LogInformation("Customer {Email} registered successfully", dto.Email);
+
+            return Ok(new { token = access, refreshToken = refresh });
+        }
+
         [HttpPost("login")]
         public async Task<IActionResult> LoginWithPassword([FromBody] LoginDto dto)
         {
@@ -169,7 +192,7 @@ namespace AuthService.Controllers
     public record RefreshDto(string RefreshToken);
     public record EmailDto([EmailAddress] string Email);
     public record LoginDto([EmailAddress] string Email, [MinLength(3)] string Password);
-    public record OtpLoginDto([EmailAddress] string Email, [Range(100000, 10000000)]string Otp);
-    public record ResetPasswordDto([EmailAddress] string Email, [Range(1000000, 10000000)] string Otp, [MinLength(3)] string NewPassword);
-    public record RegisterCustomer([MinLength(3)] string Name, [EmailAddress] string Email, [Range(1000000, 10000000)] string Otp, [MinLength(3)] string Password);
+    public record OtpLoginDto([EmailAddress] string Email, [RegularExpression(@"^\d{6}$")] string Otp);
+    public record ResetPasswordDto([EmailAddress] string Email, [RegularExpression(@"^\d{6}$")] string Otp, [MinLength(3)] string NewPassword);
+    public record RegisterCustomer([MinLength(3)] string Name, [EmailAddress] string Email, [RegularExpression(@"^\d{6}$")] string Otp, [MinLength(3)] string Password);
 }

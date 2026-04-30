@@ -23,7 +23,7 @@
       </div>
 
       <div class="form-group">
-        <label for="price">Price ($)</label>
+        <label for="price">Price (₹)</label>
         <input
           type="number"
           id="price"
@@ -38,11 +38,21 @@
 
       <div class="form-group">
         <label for="categoryId">Category</label>
-        <select id="categoryId" name="categoryId" [(ngModel)]="product.categoryId" required>
-          <option [value]="1">Electronics</option>
-          <option [value]="2">Clothing</option>
-          <option [value]="3">Stationary</option>
-        </select>
+        <div class="category-row">
+          <select id="categoryId" name="categoryId" [(ngModel)]="product.categoryId" required>
+            <option *ngFor="let category of categories" [value]="category.id">{{ category.name }}</option>
+          </select>
+          <button type="button" class="btn-outline" (click)="addCategory()" [disabled]="!newCategoryName.trim() || addingCategory">
+            {{ addingCategory ? 'Adding...' : 'Add Category' }}
+          </button>
+        </div>
+        <div class="inline-category">
+          <input type="text" name="newCategoryName" [(ngModel)]="newCategoryName" placeholder="New category name">
+          <button type="button" class="btn-sm btn-primary" (click)="addCategory()" [disabled]="!newCategoryName.trim() || addingCategory">
+            Add
+          </button>
+          <span class="inline-note">Create and auto-select new category</span>
+        </div>
       </div>
 
       <div class="form-group">
@@ -65,11 +75,63 @@
 
     <div class="form-group">
       <label for="mediaUrl">Product Image URL</label>
-      <input type="text" id="mediaUrl" name="mediaUrl" [(ngModel)]="singleMediaUrl"
-             placeholder="https://example.com/image.jpg">
-      <div *ngIf="singleMediaUrl" class="image-preview">
-        <p>Preview:</p>
-        <img [src]="singleMediaUrl" alt="Preview" style="max-width: 200px; border-radius: 8px; margin-top: 8px;">
+      <div class="split-grid">
+        <input type="text" id="mediaUrl" name="mediaUrl" [(ngModel)]="mediaUrlInput"
+               placeholder="https://example.com/image.jpg">
+        <button type="button" class="btn-primary" (click)="addMediaUrl()">Add Image</button>
+      </div>
+
+      <div class="images-list" *ngIf="product.mediaUrls.length">
+        <div class="image-chip" *ngFor="let mediaUrl of product.mediaUrls">
+          <img [src]="mediaUrl" alt="Product media preview" class="image-preview">
+          <span class="image-url">{{ mediaUrl }}</span>
+          <button type="button" class="btn-sm btn-danger-outline" (click)="removeMediaUrl(mediaUrl)">Remove</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <div class="split-grid">
+        <label>Variants</label>
+        <div class="inline-actions">
+          <button type="button" class="btn-primary" (click)="addVariant()">Add Variant</button>
+        </div>
+      </div>
+
+      <p class="sub-header" *ngIf="!product.variants.length">No variants added yet.</p>
+
+      <div class="variants-list" *ngIf="product.variants.length">
+        <div class="variant-card" *ngFor="let variant of product.variants; let i = index">
+          <div class="form-grid">
+            <div class="form-group">
+              <label [for]="'sku-' + i">SKU</label>
+              <input [id]="'sku-' + i" [name]="'sku-' + i" [(ngModel)]="variant.sku" placeholder="e.g. WH-BLK-M">
+            </div>
+            <div class="form-group">
+              <label [for]="'v-price-' + i">Variant Price</label>
+              <input type="number" [id]="'v-price-' + i" [name]="'v-price-' + i" [(ngModel)]="variant.price" placeholder="0.00">
+            </div>
+            <div class="form-group">
+              <label [for]="'v-stock-' + i">Variant Stock</label>
+              <input type="number" [id]="'v-stock-' + i" [name]="'v-stock-' + i" [(ngModel)]="variant.stock" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label [for]="'v-image-' + i">Variant Image URL</label>
+              <input [id]="'v-image-' + i" [name]="'v-image-' + i" [(ngModel)]="variant.imageUrl" placeholder="https://example.com/variant.jpg">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label [for]="'v-attr-' + i">Variant Attributes</label>
+            <input [id]="'v-attr-' + i" [name]="'v-attr-' + i" [(ngModel)]="variant.attributes" placeholder="e.g. Color: Black, Size: M">
+          </div>
+
+          <img *ngIf="variant.imageUrl" [src]="variant.imageUrl" alt="Variant preview" class="variant-preview">
+
+          <div class="inline-actions">
+            <button type="button" class="btn-sm btn-danger-outline" (click)="removeVariant(i)">Remove Variant</button>
+          </div>
+        </div>
       </div>
     </div>
 

@@ -16,6 +16,8 @@ namespace CatalogService.Repositories
         // Search & Filter
         Task<List<Product>> SearchProductAsync(string name);
         Task<List<Product>> GetProductsByCategoryAsync(int categoryId);
+        Task<List<Category>> GetCategoriesAsync();
+        Task<Category> CreateCategoryAsync(Category category);
 
         // Product Lifecycle
         Task SubmitProduct(int productId);           // Draft → Submitted

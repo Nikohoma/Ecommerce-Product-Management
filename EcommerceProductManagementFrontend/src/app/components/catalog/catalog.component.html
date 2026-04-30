@@ -2,10 +2,11 @@
   <header class="section-header">
     <div>
       <h1>Product Catalog</h1>
-      <p>Browse and manage the product lifecycle</p>
+      <p *ngIf="role !== 'Customer'">Browse and manage the product lifecycle</p>
+      <p *ngIf="role === 'Customer'">Browse Products</p>
     </div>
     <div class="search-bar">
-      <input type="text" [(ngModel)]="searchQuery" (input)="onSearch()" placeholder="Search products or tags...">
+      <input type="text" [(ngModel)]="searchQuery" (input)="onSearch()" placeholder="Search products...">
     </div>
   </header>
 
@@ -23,13 +24,13 @@
         </div>
 
         <div class="product-meta">
-          <span class="price">{{ p.price | currency }}</span>
+          <span class="price">{{ p.price | currency:"INR" }}</span>
           <span *ngIf="role !== 'Customer'" class="stock" [class.low]="p.availableQuantity < 5">
             {{ p.availableQuantity }} in stock
           </span>
         </div>
 
-        <div class="tags" *ngIf="p.tags?.length">
+        <div class="tags" *ngIf="p.tags?.length && role !== 'Customer'">
           <span class="tag" *ngFor="let tag of p.tags">#{{ tag }}</span>
         </div>
 
@@ -38,8 +39,9 @@
 
           <!-- ADMIN: Workflow Management -->
           <div *ngSwitchCase="'Admin'" class="action-group">
-            <button (click)="openStatusModal(p.id)" class="btn-sm btn-outline">Change Status</button>
-            <button (click)="editProduct(p.id)" class="btn-sm btn-outline">Edit</button>
+            <button (click)="openDetailsModal(p)" class="btn-sm btn-primary">View Details</button>
+            <button (click)="openStatusModal(p.id)" class="btn-sm btn-outline-warning">Change Status</button>
+            <button (click)="editProduct(p.id)" class="btn btn-sm btn-danger">Edit</button>
           </div>
 
           <!-- PRODUCT MANAGER: Logistics -->
@@ -56,11 +58,49 @@
 
           <!-- CUSTOMER: Shopping -->
           <div *ngSwitchCase="'Customer'" class="action-group">
-            <button class="btn-sm btn-primary w-full">Add to Cart</button>
+            <button class="btn-sm btn-primary w-full" (click)="openDetailsModal(p)">View Details</button>
           </div>
 
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<div *ngIf="showDetailsModal" class="modal-backdrop">
+  <div class="modal-card details-modal">
+    <h3>{{ selectedProductForDetails?.name }}</h3>
+    <p class="details-description">
+      {{ selectedProductForDetails?.description || 'No description available for this product.' }}
+    </p>
+
+    <div class="variants-section">
+      <h4>Variants</h4>
+
+      <p *ngIf="detailsLoading" class="empty-variants">Loading variants...</p>
+      <p *ngIf="!detailsLoading && !selectedProductVariants.length" class="empty-variants">
+        No variants available for this product.
+      </p>
+
+      <div class="variants-list" *ngIf="!detailsLoading && selectedProductVariants.length">
+        <div class="variant-item" *ngFor="let variant of selectedProductVariants">
+          <div class="variant-row">
+            <span><strong>SKU:</strong> {{ variant.sku }}</span>
+            <span><strong>Stock:</strong> {{ variant.stock }}</span>
+          </div>
+          <div class="variant-row">
+            <span><strong>Price:</strong> {{ variant.price | currency }}</span>
+          </div>
+          <img *ngIf="getVariantImageUrl(variant.attributes)" [src]="getVariantImageUrl(variant.attributes)" alt="Variant image" class="variant-preview">
+          <div class="variant-attr" *ngIf="getVariantAttributesText(variant.attributes)">
+            <strong>Attributes:</strong> {{ getVariantAttributesText(variant.attributes) }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-sm btn-outline" (click)="closeDetailsModal()">Close</button>
     </div>
   </div>
 </div>

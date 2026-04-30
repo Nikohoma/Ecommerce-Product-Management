@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, tap } from 'rxjs';
+import { BehaviorSubject, catchError, tap, throwError } from 'rxjs';
 import { Router } from '@angular/router';
 
 @Injectable({
@@ -35,6 +35,50 @@ export class AuthService {
         }
       })
     );
+  }
+
+  registerSendOtp(email: string) {
+    return this.http.post(`${this.apiUrl}/register/send-otp`, { email }, { responseType: 'text' as 'json' });
+  }
+
+  registerVerify(data: { name: string; email: string; password: string; otp: string }) {
+    return this.http.post(`${this.apiUrl}/register/verify`, data).pipe(
+      tap((res: any) => {
+        const token = res.accessToken || res.token;
+        if (token) {
+          localStorage.setItem('token', token);
+          this.decodeToken(token);
+        }
+      })
+    );
+  }
+
+  registerCustomerVerify(data: { name: string; email: string; password: string; otp: string }) {
+    return this.http.post(`${this.apiUrl}/register/customer/verify`, data).pipe(
+      catchError((err) => {
+        // Backward compatibility: if backend isn't restarted with the new route,
+        // fall back to existing register verify endpoint.
+        if (err?.status === 404) {
+          return this.http.post(`${this.apiUrl}/register/verify`, data);
+        }
+        return throwError(() => err);
+      }),
+      tap((res: any) => {
+        const token = res.accessToken || res.token;
+        if (token) {
+          localStorage.setItem('token', token);
+          this.decodeToken(token);
+        }
+      })
+    );
+  }
+
+  sendResetPasswordOtp(email: string) {
+    return this.http.post(`${this.apiUrl}/password/reset/send-otp`, { email }, { responseType: 'text' as 'json' });
+  }
+
+  resetPassword(data: { email: string; otp: string; newPassword: string }) {
+    return this.http.post(`${this.apiUrl}/password/reset/verify`, data);
   }
 
   logout() {

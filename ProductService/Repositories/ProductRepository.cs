@@ -171,6 +171,23 @@ namespace CatalogService.Repositories
                         MediaType = media.MediaType
                     });
                 }
+
+                var existingVariants = await _context.ProductVariants
+                    .Where(v => v.ProductId == product.Id)
+                    .ToListAsync();
+                _context.ProductVariants.RemoveRange(existingVariants);
+                foreach (var variant in updatedProduct.Variants)
+                {
+                    product.Variants.Add(new ProductVariant
+                    {
+                        ProductId = product.Id,
+                        SKU = variant.SKU,
+                        Price = variant.Price,
+                        Stock = variant.Stock,
+                        Attributes = variant.Attributes
+                    });
+                }
+
                 product.Tags = updatedProduct.Tags;
 
                 await _context.SaveChangesAsync();
@@ -237,6 +254,41 @@ namespace CatalogService.Repositories
             {
                 _logger.LogError(ex, "Error retrieving products for category {CategoryId}.", categoryId);
                 throw;  // was: return default
+            }
+        }
+
+        public async Task<List<Category>> GetCategoriesAsync()
+        {
+            try
+            {
+                return await _context.Categories
+                    .OrderBy(c => c.Name)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving categories.");
+                throw;
+            }
+        }
+
+        public async Task<Category> CreateCategoryAsync(Category category)
+        {
+            if (category is null)
+            {
+                throw new ArgumentNullException(nameof(category));
+            }
+
+            try
+            {
+                _context.Categories.Add(category);
+                await _context.SaveChangesAsync();
+                return category;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating category {CategoryName}.", category.Name);
+                throw;
             }
         }
 

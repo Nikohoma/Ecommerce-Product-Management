@@ -6,7 +6,7 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "localhost",
-          "Port": 7097
+          "Port": 7001
         }
       ],
       "UpstreamPathTemplate": "/gateway/api/auth/{everything}",
@@ -19,7 +19,7 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "localhost",
-          "Port": 7098
+          "Port": 7002
         }
       ],
       "UpstreamPathTemplate": "/gateway/api/products/{everything}",
@@ -40,7 +40,7 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "localhost",
-          "Port": 7098
+          "Port": 7002
         }
       ],
       "UpstreamPathTemplate": "/gateway/api/variants/{everything}",
@@ -61,7 +61,7 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "localhost",
-          "Port": 7258
+          "Port": 7004
         }
       ],
       "UpstreamPathTemplate": "/gateway/api/reports/{everything}",
@@ -82,7 +82,7 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "localhost",
-          "Port": 7149
+          "Port": 7003
         }
       ],
       "UpstreamPathTemplate": "/gateway/api/workflow/{everything}",
@@ -99,7 +99,7 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "localhost",
-          "Port": 7217
+          "Port": 7005
         }
       ],
       "UpstreamPathTemplate": "/api/cart/{everything}",
@@ -116,7 +116,7 @@
       "DownstreamHostAndPorts": [
         {
           "Host": "localhost",
-          "Port": 7008
+          "Port": 7006
         }
       ],
       "UpstreamPathTemplate": "/gateway/api/order/{everything}",
@@ -126,6 +126,19 @@
         "AuthenticationProviderKey": "Bearer",
         "AllowedScopes": []
       }
+    },
+    {
+      "DownstreamPathTemplate": "/api/payment/{everything}",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 7007
+        }
+      ],
+      "UpstreamPathTemplate": "/gateway/api/payment/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
+      "SwaggerKey": "payment"
     }
   ],
   "GlobalConfiguration": {

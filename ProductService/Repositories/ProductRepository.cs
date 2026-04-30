@@ -146,7 +146,7 @@ namespace CatalogService.Repositories
             {
                 var product = await GetProductOrThrowAsync(id);
 
-                if (product.Status != ProductStatus.Draft &&
+                if (product.Status != ProductStatus.Draft && product.Status != ProductStatus.Submitted &&
                     product.Status != ProductStatus.Rejected &&
                     product.Status != ProductStatus.Inactive &&
                     product.Status != ProductStatus.Active)

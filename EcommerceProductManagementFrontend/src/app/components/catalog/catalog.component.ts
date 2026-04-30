@@ -210,7 +210,7 @@ export class CatalogComponent implements OnInit {
     }
   }
 
-  // Workflow actions for admin
+  // for admin ui
   onWorkflow(productId: number, action: string) {
     let obs;
     if (action === 'submit') obs = this.workflowService.submit(productId);

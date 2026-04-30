@@ -6,7 +6,7 @@
         {
           "Name": "Auth API",
           "Version": "v1",
-          "Url": "https://localhost:7097/swagger/v1/swagger.json"
+          "Url": "https://localhost:7001/swagger/v1/swagger.json"
         }
       ]
     },
@@ -16,7 +16,7 @@
         {
           "Name": "Catalog API",
           "Version": "v1",
-          "Url": "https://localhost:7098/swagger/v1/swagger.json"
+          "Url": "https://localhost:7002/swagger/v1/swagger.json"
         }
       ]
     },
@@ -26,7 +26,7 @@
         {
           "Name": "Reporting API",
           "Version": "v1",
-          "Url": "https://localhost:7258/swagger/v1/swagger.json"
+          "Url": "https://localhost:7004/swagger/v1/swagger.json"
         }
       ]
     },
@@ -36,7 +36,7 @@
         {
           "Name": "Workflow API",
           "Version": "v1",
-          "Url": "https://localhost:7149/swagger/v1/swagger.json"
+          "Url": "https://localhost:7003/swagger/v1/swagger.json"
         }
       ]
     },
@@ -46,7 +46,7 @@
         {
           "Name": "Cart API",
           "Version": "v1",
-          "Url": "https://localhost:7217/swagger/v1/swagger.json"
+          "Url": "https://localhost:7005/swagger/v1/swagger.json"
         }
       ]
     },
@@ -56,7 +56,17 @@
         {
           "Name": "Order API",
           "Version": "v1",
-          "Url": "https://localhost:7008/swagger/v1/swagger.json"
+          "Url": "https://localhost:7006/swagger/v1/swagger.json"
+        }
+      ]
+    },
+    {
+      "Key": "payment",
+      "Config": [
+        {
+          "Name": "Payment API",
+          "Version": "v1",
+          "Url": "https://localhost:7007/swagger/v1/swagger.json"
         }
       ]
     }

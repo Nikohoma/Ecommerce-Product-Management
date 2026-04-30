@@ -13,6 +13,7 @@
     <div class="product-card card" *ngFor="let p of visibleProducts">
       <div class="product-image">
         <img [src]="p.media?.[0]?.mediaUrl || 'https://via.placeholder.com/300x200?text=No+Image'" alt="Product">
+        <span class="status-chip">{{ getStatusName(p.status) }}</span>
       </div>
 
       <div class="product-body">

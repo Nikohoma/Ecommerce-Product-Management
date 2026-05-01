@@ -83,8 +83,9 @@ export class AuthService {
   }
 
   resetPassword(data: { email: string; otp: string; newPassword: string }) {
-    return this.http.post(`${this.apiUrl}/password/reset/verify`, data);
+    return this.http.post(`${this.apiUrl}/password/reset/verify`, data, { responseType: 'text' as 'json' });
   }
+
 
   associateSignup(data: any) {
     return this.http.post(`${this.apiUrl}/associateSignup`, data, { responseType: 'text' as 'json' });

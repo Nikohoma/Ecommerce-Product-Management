@@ -69,8 +69,20 @@
 
           <!-- CUSTOMER: Shopping -->
           <div *ngSwitchCase="'Customer'" class="action-group">
-            <button class="btn-sm btn-primary w-full" (click)="openDetailsModal(p)">View Details</button>
+            <button (click)="openDetailsModal(p)" class="btn-sm btn-outline">View Details</button>
+
+            <ng-container *ngIf="!cartQuantities[p.id]">
+              <button class="btn-sm btn-primary" (click)="addToCart(p)">Add to Cart</button>
+            </ng-container>
+
+            <div *ngIf="cartQuantities[p.id]"
+              class="quantity-counter d-flex align-items-center bg-primary rounded px-2">
+              <button class="btn btn-sm text-white" (click)="updateCartQuantity(p.id, -1)">-</button>
+              <span class="text-white fw-bold px-2">{{ cartQuantities[p.id].quantity }}</span>
+              <button class="btn btn-sm text-white" (click)="updateCartQuantity(p.id, 1)">+</button>
+            </div>
           </div>
+
 
         </div>
       </div>
@@ -168,6 +180,28 @@
       </select>
     </div>
 
+    <!-- Existing Media List -->
+    <div *ngIf="selectedProductForMedia?.media?.length" style="margin-bottom: 16px;">
+      <label style="display: block; font-size: 0.85rem; margin-bottom: 8px; color: #475569; font-weight: 600;">Existing
+        Media</label>
+      <div
+        style="display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; padding-right: 4px;">
+        <div *ngFor="let m of selectedProductForMedia?.media"
+          style="display: flex; align-items: center; justify-content: space-between; padding: 6px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; gap: 8px;">
+          <img [src]="m.mediaUrl"
+            style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; background: #eee;">
+          <span
+            style="font-size: 0.75rem; color: #64748b; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{
+            m.mediaUrl }}</span>
+          <button type="button" (click)="removeMedia(m.mediaUrl)"
+            style="padding: 4px 8px; font-size: 0.7rem; color: #ef4444; border: 1px solid #fee2e2; background: #fff; border-radius: 4px; cursor: pointer;">
+            Remove
+          </button>
+        </div>
+      </div>
+    </div>
+
+
     <div class="modal-actions">
       <button class="btn-sm btn-outline" (click)="closeUploadModal()">Cancel</button>
       <button class="btn-sm btn-primary" (click)="saveMedia()">Save Media</button>
@@ -180,12 +214,13 @@
   <div class="modal-card">
     <h3 style="color: #1e293b;">Update Price</h3>
     <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 16px;">{{ selectedProductForLogistics?.name }}</p>
-    
+
     <div style="margin-bottom: 16px;">
       <label style="display: block; font-size: 0.85rem; margin-bottom: 4px; color: #475569;">New Price (INR)</label>
-      <input type="number" [(ngModel)]="newPrice" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; color: #1e293b;">
+      <input type="number" [(ngModel)]="newPrice"
+        style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; color: #1e293b;">
     </div>
-    
+
     <div class="modal-actions">
       <button class="btn-sm btn-outline" (click)="showPriceModal = false">Cancel</button>
       <button class="btn-sm btn-primary" (click)="applyPriceUpdate()">Update Price</button>
@@ -198,12 +233,13 @@
   <div class="modal-card">
     <h3 style="color: #1e293b;">Adjust Stock</h3>
     <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 16px;">{{ selectedProductForLogistics?.name }}</p>
-    
+
     <div style="margin-bottom: 16px;">
       <label style="display: block; font-size: 0.85rem; margin-bottom: 4px; color: #475569;">Available Quantity</label>
-      <input type="number" [(ngModel)]="newStock" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; color: #1e293b;">
+      <input type="number" [(ngModel)]="newStock"
+        style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; color: #1e293b;">
     </div>
-    
+
     <div class="modal-actions">
       <button class="btn-sm btn-outline" (click)="showStockModal = false">Cancel</button>
       <button class="btn-sm btn-primary" (click)="applyStockUpdate()">Update Stock</button>

@@ -17,7 +17,6 @@ export class ThemeService {
     if (stored) {
       return stored === 'dark';
     }
-    // Default to dark mode based on system preference
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   }
 

@@ -1,0 +1,133 @@
+<div class="cart-container-page bg-light min-vh-100 py-5">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-xl-10">
+        <div class="text-center mb-5">
+          <h1 class="display-5 fw-bold text-dark">Your Cart</h1>
+          <div class="h-1 bg-primary mx-auto rounded-pill" style="width: 60px; height: 4px;"></div>
+        </div>
+
+        <div *ngIf="loading" class="text-center py-5">
+          <div class="spinner-grow text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        </div>
+
+        <div *ngIf="!loading && items.length === 0"
+          class="empty-cart-view text-center py-5 bg-white shadow-sm rounded-4 border">
+          <div class="mb-4">
+            <i class="bi bi-cart-x display-1 text-muted"></i>
+          </div>
+          <h2 class="fw-bold">Your cart is empty</h2>
+          <p class="text-muted mb-4">Looks like you haven't added anything to your cart yet.</p>
+          <button routerLink="/catalog" class="btn btn-primary px-5 py-3 rounded-pill fw-bold shadow-sm">
+            Start Shopping
+          </button>
+        </div>
+
+        <div *ngIf="!loading && items.length > 0">
+          <!-- Products-->
+          <div class="cart-items-list mb-15 mt-10">
+            <div
+              class="product-item-card bg-white shadow-sm rounded-4 mb-4 border overflow-hidden animate__animated animate__fadeInUp"
+              *ngFor="let item of items; let i = index" [style.animation-delay]="i * 0.1 + 's'">
+              <div class="row g-0 align-items-stretch">
+                <!--Product Image -->
+                <div class="col-md-3 border-end bg-light-subtle d-flex align-items-center justify-content-center p-3">
+                  <div class="image-box h-100 w-100 d-flex align-items-center justify-content-center">
+                    <img [src]="item.imageUrl || 'assets/no-image.png'" alt="Product"
+                      class="img-fluid rounded-3 shadow-sm product-thumbnail">
+                  </div>
+                </div>
+
+                <!-- Descriptioln-->
+                <div class="col-md-6 d-flex flex-column justify-content-center p-4">
+                  <h4 class="fw-bold mb-2 text-dark">{{ item.productName }}</h4>
+                  <p class="text-muted small mb-0 line-clamp-3 lh-base">
+                    {{ item.productDescription || 'A high-quality product from our collection, designed to meet your
+                    expectations and provide exceptional value.' }}
+                  </p>
+                  <div class="mt-3">
+                    <span class="badge bg-light text-primary border px-3 py-2 rounded-pill fw-bold">
+                      {{ item.unitPrice | currency:"INR" }}
+                    </span>
+                  </div>
+                </div>
+
+                <!--status and Quantity -->
+                <div
+                  class="col-md-3 border-start bg-light-subtle d-flex flex-column align-items-center justify-content-center p-4">
+                  <div class="text-success fw-bold small mb-3 d-flex align-items-center">
+                    <span class="status-dot bg-success me-2"></span> In Stock
+                  </div>
+
+                  <!-- Quantity -->
+                  <div
+                    class="quantity-counter-group d-flex align-items-center bg-white border rounded-pill shadow-sm p-1">
+                    <button class="btn btn-sm btn-icon rounded-circle"
+                      (click)="updateQuantity(item.id, item.quantity - 1)">
+                      <i class="bi bi-dash"></i>
+                    </button>
+                    <span class="mx-3 fw-bold qty-text">{{ item.quantity }}</span>
+                    <button class="btn btn-sm btn-icon rounded-circle"
+                      (click)="updateQuantity(item.id, item.quantity + 1)">
+                      <i class="bi bi-plus"></i>
+                    </button>
+                  </div>
+
+                  <button class="btn btn-link text-danger text-decoration-none mt-3 small p-0"
+                    (click)="removeItem(item.id)">
+                    <i class="bi bi-trash3 me-1"></i> Remove
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Summary -->
+          <div
+            class="cart-footer bg-white shadow-lg rounded-4 p-5 border border-primary border-opacity-10 animate__animated animate__fadeIn">
+            <div class="row g-4 align-items-end">
+              <div class="col-lg-6">
+                <div class="coupon-box mb-4 mb-lg-0">
+                  <h6 class="fw-bold mb-3">Apply Coupon</h6>
+                  <div class="input-group shadow-sm rounded-pill overflow-hidden border">
+                    <input type="text" class="form-control border-0 px-4" placeholder="Enter coupon code">
+                    <button class="btn btn-dark px-4" type="button">Apply</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-lg-6 text-end">
+                <div class="price-summary mb-4">
+                  <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Sub Total</span>
+                    <span class="fw-semibold">{{ cart?.totalPrice | currency:"INR" }}</span>
+                  </div>
+                  <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Shipping Fees</span>
+                    <span class="text-success fw-bold">Calculated at next step</span>
+                  </div>
+                  <hr class="my-3 opacity-10">
+                  <div class="d-flex justify-content-between align-items-center pt-2">
+                    <span class="h4 fw-bold mb-0">Total</span>
+                    <span class="h2 fw-bold text-primary mb-0">{{ cart?.totalPrice | currency:"INR" }}</span>
+                  </div>
+                </div>
+
+                <div class="d-flex justify-content-end">
+                  <button
+                    class="btn btn-primary btn-lg px-5 py-3 rounded-pill shadow fw-bold d-flex align-items-center checkout-main-btn"
+                    (click)="checkout()">
+                    <span>Proceed to Checkout</span>
+                    <i class="bi bi-arrow-right-short fs-4 ms-2"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

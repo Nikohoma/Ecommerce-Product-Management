@@ -1,0 +1,13 @@
+<Solution>
+  <Project Path="../Cart Service/CartService.csproj" Id="81d7b135-b2f9-4bf1-b6d6-fc413ae5ad23" />
+  <Project Path="../Gateway/Gateway.csproj" />
+  <Project Path="../Order Service/OrderService.csproj" Id="b01380e7-8d19-41ef-a5f5-b816332b77ca" />
+  <Project Path="../Payment Service/PaymentService.csproj" Id="a35a98d5-3fef-4e04-9e59-c7d26f882656" />
+  <Project Path="../Product Service/CatalogService.csproj" />
+  <Project Path="../Reporting Service/ReportingService.csproj" Id="ed7de56b-bfec-4fcf-944f-82de1fce6d8e" />
+  <Project Path="../Shared.Contracts/Shared.Contracts.csproj" Id="4c42a00c-12fb-44ed-9ab0-53cc5d8e6cf7" />
+  <Project Path="../Workflow Service/WorkflowService.csproj" />
+  <Project Path="Auth.csproj" />
+</Solution>
+
+

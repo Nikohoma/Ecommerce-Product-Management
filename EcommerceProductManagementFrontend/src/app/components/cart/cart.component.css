@@ -1,0 +1,104 @@
+.cart-container-page {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.product-item-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.product-item-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.1) !important;
+}
+
+.product-thumbnail {
+  max-height: 140px;
+  width: auto;
+  transition: transform 0.3s;
+}
+
+.product-item-card:hover .product-thumbnail {
+  transform: scale(1.05);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 0 3px rgba(25, 135, 84, 0.2);
+}
+
+.quantity-counter-group {
+  min-width: 120px;
+  justify-content: space-between;
+}
+
+.btn-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f8fafc;
+  color: #1e293b;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s;
+}
+
+.btn-icon:hover {
+  background-color: #6366f1;
+  color: white;
+  border-color: #6366f1;
+}
+
+.qty-text {
+  font-variant-numeric: tabular-nums;
+  min-width: 20px;
+  text-align: center;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.checkout-main-btn {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  border: none;
+  transition: all 0.3s;
+}
+
+.checkout-main-btn:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 15px 25px -5px rgba(79, 70, 229, 0.4) !important;
+}
+
+.empty-cart-view {
+  border-style: dashed !important;
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(10px);
+}
+
+.cart-footer {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(99, 102, 241, 0.1);
+}
+
+@media (max-width: 768px) {
+  .product-item-card .border-end,
+  .product-item-card .border-start {
+    border: none !important;
+  }
+  
+  .product-item-card .bg-light-subtle {
+    background: transparent !important;
+  }
+
+  .cart-footer {
+    padding: 2rem !important;
+  }
+}

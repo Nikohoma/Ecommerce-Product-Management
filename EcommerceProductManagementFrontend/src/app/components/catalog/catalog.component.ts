@@ -5,281 +5,19 @@ import { AuthService } from '../../services/auth.service';
 import { WorkflowService } from '../../services/workflow.service';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, Router } from '@angular/router';
+import { CartService, CartItem } from '../../services/cart.service';
+
 
 @Component({
   selector: 'app-catalog',
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './catalog.component.html',
-  styles: [`
-    .section-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      margin-bottom: 32px;
-    }
-    .search-bar input {
-      padding: 10px 20px;
-      border-radius: 99px;
-      border: 1px solid #e2e8f0;
-      width: 300px;
-      outline: none;
-    }
-    .search-bar input:focus { border-color: #6366f1; }
-    
-    .header-actions {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-    }
-    .status-filter {
-      padding: 10px 16px;
-      border-radius: 99px;
-      border: 1px solid #e2e8f0;
-      background: white;
-      color: #475569;
-      font-size: 0.9rem;
-      font-weight: 600;
-      outline: none;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .status-filter:hover {
-      border-color: #cbd5e1;
-      background: #f8fafc;
-    }
-    .status-filter:focus {
-      border-color: #6366f1;
-      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-    }
+  styleUrls: ['./catalog.component.css'],
+  // styles: [`
 
-    .product-card {
-      padding: 0;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-    .product-image {
-      position: relative;
-      height: 200px;
-      background: #f1f5f9;
-    }
-    .product-image img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    .status-chip {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-size: 0.7rem;
-      font-weight: 800;
-      text-transform: uppercase;
-      background: white;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
-    .status-approved, .status-active { color: #166534; background: #dcfce7; }
-    .status-draft { color: #475569; background: #f1f5f9; }
-    .status-submitted { color: #854d0e; background: #fef9c3; }
-    .status-rejected { color: #991b1b; background: #fee2e2; }
+  // `]
 
-    .product-body {
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      flex: 1;
-    }
-    .product-main {
-      margin-bottom: 16px;
-      flex: 1;
-    }
-    .product-main h3 { font-size: 1.125rem; margin-bottom: 8px; }
-    .description {
-      font-size: 0.875rem;
-      color: #64748b;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-
-    .product-meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
-    }
-    .price { font-size: 1.25rem; font-weight: 800; color: #1e293b; }
-    .stock { font-size: 0.75rem; color: #64748b; font-weight: 600; }
-    .stock.low { color: #ef4444; }
-
-    .tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-bottom: 20px;
-    }
-    .tag {
-      font-size: 0.7rem;
-      color: #6366f1;
-      background: #eef2ff;
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-weight: 600;
-    }
-
-    .product-actions {
-      border-top: 1px solid #f1f5f9;
-      padding-top: 16px;
-    }
-    .action-group {
-      display: flex;
-      gap: 8px;
-    }
-    .btn-sm {
-      padding: 6px 12px;
-      font-size: 0.8125rem;
-      flex: 1;
-    }
-    .btn-outline {
-      background: white;
-      border: 1px solid #e2e8f0;
-      color: #475569;
-    }
-    .btn-outline:hover { background: #f8fafc; border-color: #cbd5e1; }
-    .btn-success { background: #22c55e; color: white; }
-    .btn-danger { background: #ef4444; color: white; }
-    .w-full { width: 100%; }
-    .modal-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(15, 23, 42, 0.45);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 999;
-    }
-    .modal-card {
-      width: 100%;
-      max-width: 380px;
-      background: #fff;
-      border-radius: 12px;
-      border: 1px solid #e2e8f0;
-      padding: 20px;
-      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
-    }
-    .modal-card h3 {
-      margin-bottom: 12px;
-      font-size: 1rem;
-      color: #1e293b;
-    }
-    .modal-card select {
-      width: 100%;
-      padding: 10px 12px;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      margin-bottom: 16px;
-    }
-    .modal-actions {
-      display: flex;
-      gap: 8px;
-      justify-content: flex-end;
-    }
-    .details-modal {
-      max-width: 640px;
-      max-height: 85vh;
-      overflow-y: auto;
-    }
-    .details-description {
-      color: #334155;
-      margin-bottom: 16px;
-      line-height: 1.5;
-    }
-    .variants-section h4 {
-      margin: 0 0 10px;
-      color: #1e293b;
-      font-size: 0.95rem;
-    }
-    .variants-list {
-      display: grid;
-      gap: 10px;
-      margin-bottom: 16px;
-    }
-    .variant-item {
-      border: 1px solid #e2e8f0;
-      border-radius: 10px;
-      padding: 10px 12px;
-      background: #f8fafc;
-    }
-    .variant-row {
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      color: #334155;
-      font-size: 0.875rem;
-    }
-    .variant-attr {
-      margin-top: 6px;
-      color: #64748b;
-      font-size: 0.8rem;
-      word-break: break-word;
-    }
-    .variant-preview {
-      margin-top: 8px;
-      width: 100%;
-      max-height: 180px;
-      object-fit: contain;
-      border-radius: 8px;
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-    }
-    .empty-variants {
-      color: #64748b;
-      font-size: 0.875rem;
-      margin-bottom: 16px;
-    }
-
-    /* Pagination Styles */
-    .pagination-container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 16px;
-      margin-top: 40px;
-      padding: 20px 0;
-    }
-    .page-info {
-      font-size: 0.9rem;
-      color: #64748b;
-    }
-    .pagination-btn {
-      padding: 8px 16px;
-      border-radius: 8px;
-      border: 1px solid #e2e8f0;
-      background: white;
-      color: #475569;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .pagination-btn:hover:not(:disabled) {
-      border-color: #6366f1;
-      color: #6366f1;
-      background: #f8fafc;
-    }
-    .pagination-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    .pagination-btn.active {
-      background: #6366f1;
-      color: white;
-      border-color: #6366f1;
-    }
-  `]
 })
 export class CatalogComponent implements OnInit {
   private router = inject(Router);
@@ -287,6 +25,8 @@ export class CatalogComponent implements OnInit {
   productService = inject(ProductService);
   authService = inject(AuthService);
   workflowService = inject(WorkflowService);
+  cartService = inject(CartService);
+
 
   products: Product[] = [];
   visibleProducts: Product[] = [];
@@ -302,10 +42,14 @@ export class CatalogComponent implements OnInit {
 
   // Pagination
   currentPage = 1;
-  pageSize = 10;
+  pageSize = 12;
   totalProducts = 0;
   totalPages = 0;
   selectedStatus = '';
+
+  // Cart tracking
+  cartQuantities: { [productId: number]: { quantity: number, itemId?: number } } = {};
+
 
   // Logistics (Price/Stock)
   showPriceModal = false;
@@ -317,7 +61,55 @@ export class CatalogComponent implements OnInit {
   ngOnInit() {
     this.role = this.authService.getRole();
     this.loadProducts();
+    if (this.role === 'Customer') {
+      this.loadCart();
+    }
   }
+
+  loadCart() {
+    this.cartService.getCart().subscribe({
+      next: (cart) => {
+        const items = cart.items && (cart.items as any).$values ? (cart.items as any).$values : (cart.items as CartItem[]);
+        this.cartQuantities = {};
+        items.forEach((item: CartItem) => {
+          this.cartQuantities[item.productId] = { quantity: item.quantity, itemId: item.id };
+        });
+      },
+      error: (err) => console.error('Error loading cart', err)
+    });
+  }
+
+  addToCart(product: Product) {
+    this.cartService.addItem(product.id, 1).subscribe({
+      next: (item) => {
+        this.cartQuantities[product.id] = { quantity: item.quantity, itemId: item.id };
+      },
+      error: (err) => alert('Failed to add to cart: ' + err.error)
+    });
+  }
+
+  updateCartQuantity(productId: number, delta: number) {
+    const itemInfo = this.cartQuantities[productId];
+    if (!itemInfo || !itemInfo.itemId) return;
+
+    const newQty = itemInfo.quantity + delta;
+    if (newQty <= 0) {
+      this.cartService.removeItem(itemInfo.itemId).subscribe({
+        next: () => {
+          delete this.cartQuantities[productId];
+        },
+        error: (err) => console.error(err)
+      });
+    } else {
+      this.cartService.updateQuantity(itemInfo.itemId, newQty).subscribe({
+        next: (item) => {
+          this.cartQuantities[productId].quantity = item.quantity;
+        },
+        error: (err) => console.error(err)
+      });
+    }
+  }
+
 
   private ensureArray<T>(data: any): T[] {
     if (!data) return [];
@@ -346,7 +138,7 @@ export class CatalogComponent implements OnInit {
       const items = res.items || [];
       this.totalProducts = res.totalCount || 0;
       this.totalPages = Math.ceil(this.totalProducts / this.pageSize);
-      
+
       this.products = this.ensureArray<Product>(items);
       this.applyVisibilityRules(this.products);
     });
@@ -557,6 +349,48 @@ export class CatalogComponent implements OnInit {
       }
     });
   }
+
+  removeMedia(url: string) {
+    if (!this.selectedProductForMedia) return;
+    if (!confirm('Are you sure you want to delete this media?')) return;
+
+    const currentMedia = (this.selectedProductForMedia.media || []).map((m: any) => m.mediaUrl);
+    const updatedMedia = currentMedia.filter(m => m !== url);
+
+    const payload: any = {
+      name: this.selectedProductForMedia.name,
+      description: this.selectedProductForMedia.description,
+      price: this.selectedProductForMedia.price,
+      stock: this.selectedProductForMedia.availableQuantity,
+      categoryId: this.selectedProductForMedia.categoryId,
+      tags: this.selectedProductForMedia.tags || [],
+      mediaUrls: updatedMedia,
+      variants: (this.selectedProductForMedia.variants || []).map((v: any) => ({
+        productId: v.productId,
+        sku: v.sku,
+        price: v.price,
+        stock: v.stock,
+        attributes: v.attributes
+      }))
+    };
+
+    this.productService.updateProduct(this.selectedProductForMedia.id, payload).subscribe({
+      next: () => {
+        alert('Media removed successfully!');
+        // Update local state to reflect change without full reload if possible, 
+        // but loadProducts is safer.
+        if (this.selectedProductForMedia) {
+          this.selectedProductForMedia.media = this.selectedProductForMedia.media?.filter((m: any) => m.mediaUrl !== url);
+        }
+        this.loadProducts();
+      },
+      error: (err) => {
+        console.error('Error removing media', err);
+        alert('Failed to remove media.');
+      }
+    });
+  }
+
 
   getStatusName(status: any): string {
     if (typeof status === 'number') {

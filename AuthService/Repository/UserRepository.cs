@@ -1,4 +1,4 @@
-﻿using Auth.Exceptions;
+using Auth.Exceptions;
 using Auth.Models;
 using ECommerceProductManagement.Data;
 using ECommerceProductManagement.Models;
@@ -36,6 +36,8 @@ namespace Auth.Repository
             },
             "RevokeAllUserTokens",
             ("UserId", userId));
+
+        public Task<IEnumerable<User>> GetAllUsersAsync() => ExecuteAsync<IEnumerable<User>>(async () => await _db.Users.ToListAsync(), "GetAllUsers");
 
 
         public async Task SaveAsync()

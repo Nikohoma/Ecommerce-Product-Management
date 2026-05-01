@@ -8,6 +8,7 @@ namespace CatalogService.Repositories
 
         // Basic CRUD
         Task<List<Product>> GetAllProductsAsync();
+        Task<(List<Product> Items, int TotalCount)> GetPaginatedProductsAsync(int page, int pageSize, ProductStatus? status = null);
         Task CreateProductAsync(Product product);
         Task DeleteProductAsync(int id);
         Task<Product> GetProductDetailsAsync(int id);

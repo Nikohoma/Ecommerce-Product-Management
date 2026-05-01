@@ -5,8 +5,20 @@
       <p *ngIf="role !== 'Customer'">Browse and manage the product lifecycle</p>
       <p *ngIf="role === 'Customer'">Browse Products</p>
     </div>
-    <div class="search-bar">
-      <input type="text" [(ngModel)]="searchQuery" (input)="onSearch()" placeholder="Search products...">
+    <div class="header-actions">
+      <div class="filter-group" *ngIf="role !== 'Customer'">
+        <select class="status-filter" [(ngModel)]="selectedStatus" (change)="onFilter()">
+          <option value="">All Status</option>
+          <option value="Draft">Draft</option>
+          <option value="Submitted">Submitted</option>
+          <option value="Active">Active</option>
+          <option value="Rejected">Rejected</option>
+          <option value="Inactive">Inactive</option>
+        </select>
+      </div>
+      <div class="search-bar">
+        <input type="text" [(ngModel)]="searchQuery" (input)="onSearch()" placeholder="Search products...">
+      </div>
     </div>
   </header>
 
@@ -45,15 +57,14 @@
           </div>
 
           <!-- PRODUCT MANAGER: Logistics -->
-          <div *ngSwitchCase="'Product Manager'" class="action-group">
-            <button class="btn-sm btn-outline">Adjust Stock</button>
-            <button class="btn-sm btn-outline">Update Price</button>
+          <div *ngSwitchCase="'ProductManager'" class="action-group">
+            <button (click)="openStockModal(p)" class="btn-sm btn-outline">Adjust Stock</button>
+            <button (click)="openPriceModal(p)" class="btn-sm btn-outline">Update Price</button>
           </div>
 
           <!-- CONTENT EXECUTIVE: Messaging -->
-          <div *ngSwitchCase="'Content Executive'" class="action-group">
-            <button class="btn-sm btn-outline">Edit Content</button>
-            <button class="btn-sm btn-outline">Manage Media</button>
+          <div *ngSwitchCase="'ContentExecutive'" class="action-group">
+            <button class="btn-sm btn-primary w-full" (click)="onUploadMedia(p)">Upload Media</button>
           </div>
 
           <!-- CUSTOMER: Shopping -->
@@ -64,6 +75,21 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- Pagination Controls -->
+  <div class="pagination-container" *ngIf="totalProducts > pageSize && !searchQuery">
+    <button class="pagination-btn" [disabled]="currentPage === 1" (click)="changePage(currentPage - 1)">
+      Previous
+    </button>
+
+    <span class="page-info">
+      Page <strong>{{ currentPage }}</strong> of <strong>{{ totalPages }}</strong>
+    </span>
+
+    <button class="pagination-btn" [disabled]="currentPage === totalPages" (click)="changePage(currentPage + 1)">
+      Next
+    </button>
   </div>
 </div>
 
@@ -91,7 +117,8 @@
           <div class="variant-row">
             <span><strong>Price:</strong> {{ variant.price | currency }}</span>
           </div>
-          <img *ngIf="getVariantImageUrl(variant.attributes)" [src]="getVariantImageUrl(variant.attributes)" alt="Variant image" class="variant-preview">
+          <img *ngIf="getVariantImageUrl(variant.attributes)" [src]="getVariantImageUrl(variant.attributes)"
+            alt="Variant image" class="variant-preview">
           <div class="variant-attr" *ngIf="getVariantAttributesText(variant.attributes)">
             <strong>Attributes:</strong> {{ getVariantAttributesText(variant.attributes) }}
           </div>
@@ -116,6 +143,70 @@
     <div class="modal-actions">
       <button class="btn-sm btn-outline" (click)="closeStatusModal()">Cancel</button>
       <button class="btn-sm btn-success" (click)="applyStatusChange()">Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- Upload Media Modal -->
+<div *ngIf="showUploadModal" class="modal-backdrop">
+  <div class="modal-card">
+    <h3 style="color: #1e293b;">Upload Media</h3>
+    <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 16px;">{{ selectedProductForMedia?.name }}</p>
+
+    <div style="margin-bottom: 12px;">
+      <label style="display: block; font-size: 0.85rem; margin-bottom: 4px; color: #475569;">Media URL</label>
+      <input type="text" [(ngModel)]="mediaUrl" placeholder="https://example.com/image.jpg"
+        style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; color: #1e293b;">
+    </div>
+
+    <div style="margin-bottom: 16px;">
+      <label style="display: block; font-size: 0.85rem; margin-bottom: 4px; color: #475569;">Media Type</label>
+      <select [(ngModel)]="mediaType"
+        style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; color: #1e293b;">
+        <option value="image">Image</option>
+        <option value="video">Video</option>
+      </select>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-sm btn-outline" (click)="closeUploadModal()">Cancel</button>
+      <button class="btn-sm btn-primary" (click)="saveMedia()">Save Media</button>
+    </div>
+  </div>
+</div>
+
+<!-- Price Update Modal -->
+<div *ngIf="showPriceModal" class="modal-backdrop">
+  <div class="modal-card">
+    <h3 style="color: #1e293b;">Update Price</h3>
+    <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 16px;">{{ selectedProductForLogistics?.name }}</p>
+    
+    <div style="margin-bottom: 16px;">
+      <label style="display: block; font-size: 0.85rem; margin-bottom: 4px; color: #475569;">New Price (INR)</label>
+      <input type="number" [(ngModel)]="newPrice" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; color: #1e293b;">
+    </div>
+    
+    <div class="modal-actions">
+      <button class="btn-sm btn-outline" (click)="showPriceModal = false">Cancel</button>
+      <button class="btn-sm btn-primary" (click)="applyPriceUpdate()">Update Price</button>
+    </div>
+  </div>
+</div>
+
+<!-- Stock Update Modal -->
+<div *ngIf="showStockModal" class="modal-backdrop">
+  <div class="modal-card">
+    <h3 style="color: #1e293b;">Adjust Stock</h3>
+    <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 16px;">{{ selectedProductForLogistics?.name }}</p>
+    
+    <div style="margin-bottom: 16px;">
+      <label style="display: block; font-size: 0.85rem; margin-bottom: 4px; color: #475569;">Available Quantity</label>
+      <input type="number" [(ngModel)]="newStock" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; color: #1e293b;">
+    </div>
+    
+    <div class="modal-actions">
+      <button class="btn-sm btn-outline" (click)="showStockModal = false">Cancel</button>
+      <button class="btn-sm btn-primary" (click)="applyStockUpdate()">Update Stock</button>
     </div>
   </div>
 </div>

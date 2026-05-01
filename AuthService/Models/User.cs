@@ -1,4 +1,4 @@
-﻿using Auth.Models;
+using Auth.Models;
 
 namespace ECommerceProductManagement.Models
 {
@@ -10,5 +10,6 @@ namespace ECommerceProductManagement.Models
         public string Email { get; set; }
         public string PasswordHash { get; set; }
         public string Role { get; set; }
+        public bool IsActive { get; set; } = true;
     }
 }

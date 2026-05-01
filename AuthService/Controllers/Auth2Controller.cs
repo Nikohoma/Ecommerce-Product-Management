@@ -1,9 +1,10 @@
-﻿using Auth.DTOs;
+using Auth.DTOs;
 using Auth.Services;
 using ECommerceProductManagement.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Authorization;
 
 namespace AuthService.Controllers
 {
@@ -123,13 +124,23 @@ namespace AuthService.Controllers
         }
 
         [HttpPost("associateSignup")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> AssociateSignup([FromBody] SignupDto dto)
         {
+            if (dto.Role == "Admin") return BadRequest("Admin role creation is not allowed.");
             if (await _auth.EmailExistsAsync(dto.Email))return BadRequest("User already exists.");
 
             await _auth.RegisterAsync(dto.Name, dto.Email, dto.Password, dto.Role);
 
             return Ok("User created.");
+        }
+
+        [HttpGet("users")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetUsers()
+        {
+            var users = await _auth.GetAllUsersAsync();
+            return Ok(users);
         }
 
         [HttpPost("refresh")]
@@ -187,8 +198,28 @@ namespace AuthService.Controllers
 
             return Ok("Password reset successful.");
         }
+        [HttpPut("users/update")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> UpdateUser([FromBody] UpdateUserDto dto)
+        {
+            var currentEmail = User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value 
+                             ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                             ?? User.Identity?.Name;
+
+            if (string.Equals(currentEmail, dto.Email, StringComparison.OrdinalIgnoreCase)) 
+                return BadRequest("Admin cannot change their own role or status.");
+
+            var success = await _auth.UpdateUserAsync(dto.Email, dto.Role, dto.IsActive);
+            if (!success) return NotFound("User not found.");
+            return Ok("User updated successfully.");
+        }
     }
 
+    public record UpdateUserDto(
+        [property: System.Text.Json.Serialization.JsonPropertyName("Email")] string Email, 
+        [property: System.Text.Json.Serialization.JsonPropertyName("Role")] string Role, 
+        [property: System.Text.Json.Serialization.JsonPropertyName("IsActive")] bool IsActive
+    );
     public record RefreshDto(string RefreshToken);
     public record EmailDto([EmailAddress] string Email);
     public record LoginDto([EmailAddress] string Email, [MinLength(3)] string Password);

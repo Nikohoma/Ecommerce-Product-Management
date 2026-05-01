@@ -1,4 +1,4 @@
-﻿using CatalogService.Data;
+using CatalogService.Data;
 using CatalogService.DTO.Products;
 using CatalogService.Models;
 using CatalogService.Services;
@@ -102,7 +102,12 @@ public class ProductsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetProducts([FromQuery] string? search,[FromQuery] int? categoryId)
+    public async Task<IActionResult> GetProducts(
+        [FromQuery] string? search, 
+        [FromQuery] int? categoryId,
+        [FromQuery] ProductStatus? status,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10)
     {
         if (!string.IsNullOrEmpty(search))
             return Ok(await _service.SearchProduct(search));
@@ -110,7 +115,7 @@ public class ProductsController : ControllerBase
         if (categoryId.HasValue)
             return Ok(await _service.GetProductsByCategory(categoryId.Value));
 
-        return Ok(await _service.GetAllProducts());
+        return Ok(await _service.GetPaginatedProducts(page, pageSize, status));
     }
 
     //[Authorize(Roles = "Admin,ProductManager")]
@@ -142,7 +147,7 @@ public class ProductsController : ControllerBase
     public async Task<IActionResult> UpdatePrice(int id, [FromQuery] decimal newPrice)
     {
         await _service.UpdatePrice(id, newPrice);
-        return Ok($"Product {id} price updated to {newPrice}");
+        return Ok(new { message = $"Product {id} price updated to {newPrice}" });
     }
 
     [Authorize(Roles = "Admin,ProductManager")]
@@ -150,7 +155,7 @@ public class ProductsController : ControllerBase
     public async Task<IActionResult> UpdateStock(int id, [FromQuery] int quantity)
     {
         await _service.UpdateStock(id, quantity);
-        return Ok($"Product {id} stock updated to {quantity}");
+        return Ok(new { message = $"Product {id} stock updated to {quantity}" });
     }
 
     [HttpPost("{id}/deduct-stock")]

@@ -1,4 +1,4 @@
-﻿using Auth.DTOs;
+using Auth.DTOs;
 using Auth.Exceptions;
 using Auth.Models;
 using Auth.Repository;
@@ -211,6 +211,33 @@ namespace Auth.Services
             {
                 _logger.LogError(ex, "Password reset failed for {Email}", email);
                 throw new PasswordResetException(email, ex);
+            }
+        }
+
+        public Task<IEnumerable<User>> GetAllUsersAsync() => _repo.GetAllUsersAsync();
+        
+        public async Task<bool> UpdateUserAsync(string email, string role, bool isActive)
+        {
+            try
+            {
+                var user = await _repo.GetByEmailAsync(email);
+                if (user == null)
+                {
+                    _logger.LogWarning("UpdateUser failed — user not found: {Email}", email);
+                    return false;
+                }
+
+                user.Role = role;
+                user.IsActive = isActive;
+                await _repo.SaveAsync();
+
+                _logger.LogInformation("User {Email} updated: Role={Role}, IsActive={IsActive}", email, role, isActive);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "UpdateUser failed for {Email}", email);
+                return false;
             }
         }
 

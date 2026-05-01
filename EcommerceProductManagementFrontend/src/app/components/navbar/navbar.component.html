@@ -1,26 +1,26 @@
 <nav class="navbar glass">
   <div class="container nav-content">
     <div class="brand" routerLink="/dashboard">
-      <div class="logo">R</div>
+      <div class="logo1"><img src="assets/rush_logo.png" alt="Rush Mart"></div>
       <span>Rush Mart</span>
     </div>
 
     <ul class="nav-links" *ngIf="authService.getRole() === 'Customer'">
       <li><a routerLink="/dashboard" routerLinkActive="active">Home</a></li>
       <li><a routerLink="/catalog" routerLinkActive="active">Products</a></li>
-
     </ul>
     <ul class="nav-links" *ngIf="authService.getRole() !== 'Customer'">
       <li><a routerLink="/dashboard" routerLinkActive="active">Dashboard</a></li>
       <li><a routerLink="/catalog" routerLinkActive="active">Products</a></li>
-      <li><a routerLink="/product/add" routerLinkActive="active">Add
-          Product</a></li>
+      <li *ngIf="authService.getRole() !== 'ContentExecutive'"><a routerLink="/product/add"
+          routerLinkActive="active">Add Product</a></li>
+      <li *ngIf="authService.getRole() === 'Admin'"><a routerLink="/users" routerLinkActive="active">Users</a></li>
     </ul>
 
     <div class="user-actions">
       <div class="user-info">
         <span class="role-badge">{{ authService.getRole() }}</span>
-        <span class="user-name">{{ (authService.user$ | async)?.name }}</span>
+        <span class="user-name">{{ (authService.user$ | async)?.email }}</span>
       </div>
       <!-- <button (click)="toggleTheme()" class="btn-theme-toggle" title="Toggle dark mode">
         <svg *ngIf="!(isDarkMode$ | async)" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"

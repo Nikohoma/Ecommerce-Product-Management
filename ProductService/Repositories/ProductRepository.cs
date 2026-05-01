@@ -114,6 +114,37 @@ namespace CatalogService.Repositories
             }
         }
 
+        public async Task<(List<Product> Items, int TotalCount)> GetPaginatedProductsAsync(int page, int pageSize, ProductStatus? status = null)
+        {
+            try
+            {
+                var query = _context.Products
+                    .Include(p => p.Category)
+                    .Include(p => p.Variants)
+                    .Include(p => p.Media)
+                    .AsQueryable();
+
+                if (status.HasValue)
+                {
+                    query = query.Where(p => p.Status == status.Value);
+                }
+
+                var totalCount = await query.CountAsync();
+                var items = await query
+                    .OrderByDescending(p => p.Id)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                return (items, totalCount);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving paginated products.");
+                throw;
+            }
+        }
+
         public async Task<Product> GetProductDetailsAsync(int id)
         {
             try
@@ -360,16 +391,13 @@ namespace CatalogService.Repositories
             }
         }
 
-        // ─── Restricted Updates ───────────────────────────────────────────────────
+        // Updates
 
         public async Task UpdatePriceAsync(int productId, decimal newPrice)
         {
             try
             {
                 var product = await GetProductOrThrowAsync(productId);
-
-                if (product.Status != ProductStatus.Active)
-                    throw new InvalidProductStatusTransitionException(product.Status, ProductStatus.Active, "UpdatePrice");
 
                 product.Price = newPrice;
                 await _context.SaveChangesAsync();

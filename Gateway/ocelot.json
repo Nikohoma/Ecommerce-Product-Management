@@ -10,7 +10,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/api/auth/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST" ],
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
       "SwaggerKey": "auth"
     },
     {
@@ -23,7 +23,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/api/products/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH" ],
       "SwaggerKey": "catalog",
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",
@@ -44,7 +44,7 @@
         }
       ],
       "UpstreamPathTemplate": "/gateway/api/variants/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH" ],
       "SwaggerKey": "catalog",
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "Bearer",

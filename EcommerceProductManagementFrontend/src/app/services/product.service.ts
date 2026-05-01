@@ -38,6 +38,13 @@ export interface ProductVariantCreateRequest {
   imageUrl?: string;
 }
 
+export interface PaginatedResult<T> {
+  items: T[] | { "$values": T[] };
+  totalCount: number;
+  page: number;
+  pageSize: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -46,8 +53,10 @@ export class ProductService {
   private apiUrl = 'http://localhost:7000/gateway/api/products';
   private variantsApiUrl = 'http://localhost:7000/gateway/api/variants';
 
-  getProducts() {
-    return this.http.get<Product[]>(this.apiUrl);
+  getProducts(page: number = 1, pageSize: number = 10, status?: string) {
+    const params: any = { page: page.toString(), pageSize: pageSize.toString() };
+    if (status) params.status = status;
+    return this.http.get<any>(this.apiUrl, { params });
   }
 
   getCategories() {
@@ -84,5 +93,13 @@ export class ProductService {
 
   createVariant(payload: ProductVariantCreateRequest) {
     return this.http.post(`${this.variantsApiUrl}`, payload);
+  }
+
+  updatePrice(id: number, newPrice: number) {
+    return this.http.patch(`${this.apiUrl}/${id}/price`, {}, { params: { newPrice: newPrice.toString() } });
+  }
+
+  updateStock(id: number, quantity: number) {
+    return this.http.patch(`${this.apiUrl}/${id}/inventory`, {}, { params: { quantity: quantity.toString() } });
   }
 }

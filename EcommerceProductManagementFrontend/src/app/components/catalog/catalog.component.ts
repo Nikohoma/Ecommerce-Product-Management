@@ -26,6 +26,32 @@ import { RouterLink, Router } from '@angular/router';
       outline: none;
     }
     .search-bar input:focus { border-color: #6366f1; }
+    
+    .header-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .status-filter {
+      padding: 10px 16px;
+      border-radius: 99px;
+      border: 1px solid #e2e8f0;
+      background: white;
+      color: #475569;
+      font-size: 0.9rem;
+      font-weight: 600;
+      outline: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .status-filter:hover {
+      border-color: #cbd5e1;
+      background: #f8fafc;
+    }
+    .status-filter:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
 
     .product-card {
       padding: 0;
@@ -215,6 +241,44 @@ import { RouterLink, Router } from '@angular/router';
       font-size: 0.875rem;
       margin-bottom: 16px;
     }
+
+    /* Pagination Styles */
+    .pagination-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      margin-top: 40px;
+      padding: 20px 0;
+    }
+    .page-info {
+      font-size: 0.9rem;
+      color: #64748b;
+    }
+    .pagination-btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      background: white;
+      color: #475569;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .pagination-btn:hover:not(:disabled) {
+      border-color: #6366f1;
+      color: #6366f1;
+      background: #f8fafc;
+    }
+    .pagination-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .pagination-btn.active {
+      background: #6366f1;
+      color: white;
+      border-color: #6366f1;
+    }
   `]
 })
 export class CatalogComponent implements OnInit {
@@ -236,31 +300,75 @@ export class CatalogComponent implements OnInit {
   selectedProductForDetails: Product | null = null;
   selectedProductVariants: ProductVariant[] = [];
 
+  // Pagination
+  currentPage = 1;
+  pageSize = 10;
+  totalProducts = 0;
+  totalPages = 0;
+  selectedStatus = '';
+
+  // Logistics (Price/Stock)
+  showPriceModal = false;
+  showStockModal = false;
+  newPrice = 0;
+  newStock = 0;
+  selectedProductForLogistics: Product | null = null;
+
   ngOnInit() {
     this.role = this.authService.getRole();
     this.loadProducts();
   }
 
-  private applyVisibilityRules(products: Product[]) {
+  private ensureArray<T>(data: any): T[] {
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+    if (data.$values && Array.isArray(data.$values)) return data.$values;
+    return [data];
+  }
+
+  private applyVisibilityRules(products: any) {
+    const list = this.ensureArray<Product>(products).map(p => ({
+      ...p,
+      media: this.ensureArray<{ mediaUrl: string; mediaType: string }>(p.media),
+      tags: this.ensureArray<string>(p.tags)
+    })) as Product[];
+
     if (this.role === 'Customer') {
-      this.visibleProducts = products.filter(p => this.getStatusName((p as any).status).toLowerCase() === 'active');
+      this.visibleProducts = list.filter(p => this.getStatusName(p.status).toLowerCase() === 'active');
     } else {
-      this.visibleProducts = products;
+      this.visibleProducts = list;
     }
   }
 
   loadProducts() {
-    this.productService.getProducts().subscribe(data => {
-      this.products = data;
-      this.applyVisibilityRules(data);
+    this.productService.getProducts(this.currentPage, this.pageSize, this.selectedStatus).subscribe(res => {
+      // res is now PaginatedResult
+      const items = res.items || [];
+      this.totalProducts = res.totalCount || 0;
+      this.totalPages = Math.ceil(this.totalProducts / this.pageSize);
+      
+      this.products = this.ensureArray<Product>(items);
+      this.applyVisibilityRules(this.products);
     });
+  }
+
+  onFilter() {
+    this.currentPage = 1;
+    this.loadProducts();
+  }
+
+  changePage(page: number) {
+    if (page < 1 || page > this.totalPages) return;
+    this.currentPage = page;
+    this.loadProducts();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   onSearch() {
     if (this.searchQuery) {
       this.productService.searchProducts(this.searchQuery).subscribe(data => {
-        this.products = data;
-        this.applyVisibilityRules(data);
+        this.products = this.ensureArray<Product>(data);
+        this.applyVisibilityRules(this.products);
       });
     } else {
       this.loadProducts();
@@ -274,6 +382,52 @@ export class CatalogComponent implements OnInit {
     else if (action === 'approve') obs = this.workflowService.approve(productId);
     else obs = this.workflowService.reject(productId);
     obs.subscribe(() => this.loadProducts());
+  }
+
+  // Logistics Methods
+  openPriceModal(product: Product) {
+    this.selectedProductForLogistics = product;
+    this.newPrice = product.price;
+    this.showPriceModal = true;
+  }
+
+  openStockModal(product: Product) {
+    this.selectedProductForLogistics = product;
+    this.newStock = product.availableQuantity;
+    this.showStockModal = true;
+  }
+
+  applyPriceUpdate() {
+    if (!this.selectedProductForLogistics) return;
+    this.productService.updatePrice(this.selectedProductForLogistics.id, this.newPrice).subscribe({
+      next: () => {
+        alert('Price updated successfully!');
+        this.loadProducts();
+        this.showPriceModal = false;
+      },
+      error: (err) => alert('Failed to update price. ' + this.getBackendErrorMessage(err))
+    });
+  }
+
+  applyStockUpdate() {
+    if (!this.selectedProductForLogistics) return;
+    this.productService.updateStock(this.selectedProductForLogistics.id, this.newStock).subscribe({
+      next: () => {
+        alert('Stock updated successfully!');
+        this.loadProducts();
+        this.showStockModal = false;
+      },
+      error: (err) => alert('Failed to update stock. ' + this.getBackendErrorMessage(err))
+    });
+  }
+
+  private getBackendErrorMessage(err: any): string {
+    if (!err) return 'Unknown error';
+    if (typeof err.error === 'string') return err.error;
+    if (err.error && err.error.detail) return err.error.detail;
+    if (err.error && err.error.message) return err.error.message;
+    if (err.message) return err.message;
+    return JSON.stringify(err);
   }
 
   openStatusModal(productId: number) {
@@ -347,6 +501,61 @@ export class CatalogComponent implements OnInit {
   // Navigate to edit product page
   editProduct(productId: number) {
     this.router.navigate(['/product/edit', productId]);
+  }
+
+  showUploadModal = false;
+  mediaUrl = '';
+  mediaType = 'image';
+  selectedProductForMedia: Product | null = null;
+
+  onUploadMedia(product: Product) {
+    this.selectedProductForMedia = product;
+    this.mediaUrl = '';
+    this.showUploadModal = true;
+  }
+
+  closeUploadModal() {
+    this.showUploadModal = false;
+    this.selectedProductForMedia = null;
+  }
+
+  saveMedia() {
+    if (!this.selectedProductForMedia || !this.mediaUrl) return;
+
+    // The backend expects a ProductCreateDto which uses MediaUrls (strings) and Stock
+    const payload: any = {
+      name: this.selectedProductForMedia.name,
+      description: this.selectedProductForMedia.description,
+      price: this.selectedProductForMedia.price,
+      stock: this.selectedProductForMedia.availableQuantity,
+      categoryId: this.selectedProductForMedia.categoryId,
+      tags: this.selectedProductForMedia.tags || [],
+      mediaUrls: (this.selectedProductForMedia.media || []).map((m: any) => m.mediaUrl),
+      variants: (this.selectedProductForMedia.variants || []).map((v: any) => ({
+        productId: v.productId,
+        sku: v.sku,
+        price: v.price,
+        stock: v.stock,
+        attributes: v.attributes
+      }))
+    };
+
+    // Add the new media URL
+    if (!payload.mediaUrls.includes(this.mediaUrl)) {
+      payload.mediaUrls.push(this.mediaUrl);
+    }
+
+    this.productService.updateProduct(this.selectedProductForMedia.id, payload).subscribe({
+      next: () => {
+        alert('Media uploaded successfully! The product has been sent to Draft status for review.');
+        this.loadProducts();
+        this.closeUploadModal();
+      },
+      error: (err) => {
+        console.error('Error uploading media', err);
+        alert('Failed to upload media. Please check if the product is in a status that allows updates.');
+      }
+    });
   }
 
   getStatusName(status: any): string {

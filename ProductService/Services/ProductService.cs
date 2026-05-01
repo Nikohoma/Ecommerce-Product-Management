@@ -71,6 +71,20 @@ namespace CatalogService.Services
             return await _repo.GetAllProductsAsync();
         }
 
+        public async Task<PaginatedResult<Product>> GetPaginatedProducts(int page, int pageSize, ProductStatus? status = null)
+        {
+            _logger.LogInformation("Fetching products for page {Page} with size {PageSize} and status {Status}.", page, pageSize, status);
+            var (items, totalCount) = await _repo.GetPaginatedProductsAsync(page, pageSize, status);
+            
+            return new PaginatedResult<Product>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize
+            };
+        }
+
         public async Task<Product> GetProductDetails(int id)
         {
             var result = await _repo.GetProductDetailsAsync(id);

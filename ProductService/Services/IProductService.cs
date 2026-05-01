@@ -16,6 +16,7 @@ namespace CatalogService.Services
 
         // Basic CRUD
         Task<List<Product>> GetAllProducts();
+        Task<PaginatedResult<Product>> GetPaginatedProducts(int page, int pageSize, ProductStatus? status = null);
         Task CreateProduct(ProductCreateDto product);
         Task DeleteProduct(int id);
         Task<Product> GetProductDetails(int id);

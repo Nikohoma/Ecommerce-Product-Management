@@ -1,4 +1,4 @@
-﻿using Auth.DTOs;
+using Auth.DTOs;
 
 namespace Auth.Services
 {
@@ -14,5 +14,7 @@ namespace Auth.Services
         Task<TokenResponse> RefreshAsync(string refreshToken);
         Task<bool> LogoutAsync(string refreshToken);
         Task<bool> ResetPasswordAsync(string email, string newPassword);
+        Task<IEnumerable<ECommerceProductManagement.Models.User>> GetAllUsersAsync();
+        Task<bool> UpdateUserAsync(string email, string role, bool isActive);
     }
 }

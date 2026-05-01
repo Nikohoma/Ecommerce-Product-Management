@@ -21,6 +21,11 @@ export class AuthService {
     }
   }
 
+  getUserFromStorage() {
+    const data = localStorage.getItem('user');
+    return data ? JSON.parse(data) : null;
+  }
+
   login(credentials: any) {
     const payload = {
       email: credentials.email,
@@ -81,6 +86,18 @@ export class AuthService {
     return this.http.post(`${this.apiUrl}/password/reset/verify`, data);
   }
 
+  associateSignup(data: any) {
+    return this.http.post(`${this.apiUrl}/associateSignup`, data, { responseType: 'text' as 'json' });
+  }
+
+  getUsers() {
+    return this.http.get<any[]>(`${this.apiUrl}/users`);
+  }
+
+  updateUser(data: { Email: string; Role: string; IsActive: boolean }) {
+    return this.http.put(`${this.apiUrl}/users/update`, data, { responseType: 'text' as 'json' });
+  }
+
   logout() {
     localStorage.removeItem('token');
     this.userSubject.next(null);
@@ -94,6 +111,7 @@ export class AuthService {
       const user = {
         id: payload.nameid || payload.sub,
         name: payload.unique_name || payload.name,
+        email: payload.sub || payload.unique_name || payload.email,
         role: payload.role || payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'],
         token: token
       };
@@ -113,5 +131,13 @@ export class AuthService {
 
   getRole() {
     return this.userSubject.value?.role;
+  }
+
+  getEmail() {
+    return this.userSubject.value?.email;
+  }
+
+  getName() {
+    return this.userSubject.value?.name;
   }
 }

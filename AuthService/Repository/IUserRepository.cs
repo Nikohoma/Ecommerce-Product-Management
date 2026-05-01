@@ -1,4 +1,4 @@
-﻿using Auth.Models;
+using Auth.Models;
 using ECommerceProductManagement.Models;
 
 namespace Auth.Repository
@@ -12,6 +12,7 @@ namespace Auth.Repository
         Task AddRefreshTokenAsync(RefreshToken token);
         Task<RefreshToken?> GetValidRefreshTokenAsync(string token);
         Task RevokeAllUserTokensAsync(int userId);
+        Task<IEnumerable<User>> GetAllUsersAsync();
         Task SaveAsync();
     }
 }

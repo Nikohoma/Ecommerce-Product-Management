@@ -16,6 +16,6 @@ namespace CatalogService.DTO.Products
         public int CategoryId { get; set; }
         public List<string> MediaUrls { get; set; } = new();
         public List<string> Tags { get; set; } = new();
-        public List<ProductVariantCreateDto> Variants { get; set; } = new();
+        public List<ProductVariantForProductDto> Variants { get; set; } = new();
     }
 }

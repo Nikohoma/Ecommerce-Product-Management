@@ -13,10 +13,7 @@ import { CartService, CartItem } from '../../services/cart.service';
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './catalog.component.html',
-  styleUrls: ['./catalog.component.css'],
-  // styles: [`
-
-  // `]
+  styleUrls: ['./catalog.component.css']
 
 })
 export class CatalogComponent implements OnInit {
@@ -334,7 +331,7 @@ export class CatalogComponent implements OnInit {
   saveMedia() {
     if (!this.selectedProductForMedia || !this.mediaUrl) return;
 
-    // The backend expects a ProductCreateDto which uses MediaUrls (strings) and Stock
+    // ProductCreateDto with MediaUrls (strings) and Stock
     const payload: any = {
       name: this.selectedProductForMedia.name,
       description: this.selectedProductForMedia.description,
@@ -359,7 +356,7 @@ export class CatalogComponent implements OnInit {
 
     this.productService.updateProduct(this.selectedProductForMedia.id, payload).subscribe({
       next: () => {
-        alert('Media uploaded successfully! The product has been sent to Draft status for review.');
+        alert('Media uploaded successfully! The product has been submitted for review.');
         this.loadProducts();
         this.closeUploadModal();
       },
@@ -424,7 +421,7 @@ export class CatalogComponent implements OnInit {
     const name = this.getStatusName(status).toLowerCase();
     if (action === 'submit') return name === 'submitted' || name === 'approved' || name === 'active';
     if (action === 'approve') return name === 'approved' || name === 'active';
-    if (action === 'reject') return false; // Allow rejection irrespective of status as per admin requirement
+    if (action === 'reject') return false;
     return false;
   }
 }

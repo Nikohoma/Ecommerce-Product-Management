@@ -1,6 +1,6 @@
 <div class="user-management-container">
   <div class="header">
-    <h1>User Management</h1>
+    <h1>Manage Users</h1>
   </div>
 
   <div class="tabs">
@@ -44,27 +44,6 @@
             </td>
           </tr>
         </tbody>
-        <!-- <tbody>
-          <ng-container *ngFor="let user of users">
-            <tr *ngIf="user.role !== 'Admin'">
-              <td>{{ user.name }}</td>
-              <td>{{ user.email }}</td>
-              <td><span class="role-badge">{{ user.role }}</span></td>
-              <td>
-                <span class="status-chip" [ngClass]="user.isActive ? 'status-active' : 'status-inactive'">
-                  {{ user.isActive ? 'Active' : 'Inactive' }}
-                </span>
-              </td>
-              <td>{{ user.createdAt | date:'mediumDate' }}</td>
-              <td>
-                <button class="btn-edit" *ngIf="!isCurrentUser(user.email)" (click)="openEditModal(user)">
-                  Edit
-                </button>
-                <span *ngIf="isCurrentUser(user.email)" class="self-tag">You</span>
-              </td>
-            </tr>
-          </ng-container>
-        </tbody> -->
       </table>
       <div *ngIf="users.length === 0" style="text-align: center; padding: 40px; color: #94a3b8;">
         No users found.

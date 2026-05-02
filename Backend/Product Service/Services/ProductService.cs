@@ -275,7 +275,8 @@ namespace CatalogService.Services
         {
             if (string.IsNullOrWhiteSpace(attributes) && string.IsNullOrWhiteSpace(imageUrl))
             {
-                return attributes;
+                // DB column `ProductVariants.Attributes` is non-nullable; store an explicit empty JSON payload.
+                return JsonSerializer.Serialize(new { details = (string?)null, imageUrl = (string?)null });
             }
 
             var payload = new

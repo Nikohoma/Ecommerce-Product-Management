@@ -7,7 +7,7 @@
   <form #productForm="ngForm" (ngSubmit)="onSubmit()" class="card form-card">
     <div class="form-grid">
       <div class="form-group">
-        <label for="name">Product Name</label>
+        <label for="name">Product Name<span class="required">*</span></label>
         <input type="text" id="name" name="name" [(ngModel)]="product.name" required minlength="3" maxlength="25"
           #name="ngModel" [class.invalid]="name.invalid && name.touched" placeholder="e.g. Wireless Headphones">
         <div *ngIf="name.invalid && name.touched">
@@ -26,7 +26,7 @@
       </div>
 
       <div class="form-group">
-        <label for="price">Price (₹)</label>
+        <label for="price">Price<span class="required">*</span> (₹)</label>
         <input type="number" id="price" name="price" [(ngModel)]="product.price" min="1" max="1000000" required
           #price="ngModel" [class.invalid]="price.invalid && price.touched" placeholder="0.00">
         <div>
@@ -41,7 +41,7 @@
 
           <select name="categoryId" [(ngModel)]="product.categoryId" required #category="ngModel">
 
-            <option value="">Select Category</option>
+            <option value="null">Select Category</option>
             <option *ngFor="let category of categories" [value]="category.id">
               {{ category.name }}
             </option>
@@ -75,7 +75,7 @@
 
 
       <div class="form-group">
-        <label for="quantity">Available Quantity</label>
+        <label for="quantity">Available Quantity<span class="required">*</span></label>
         <input type="number" id="quantity" name="stock" [(ngModel)]="product.stock" required placeholder="0" min="1"
           max="10000000" #quantity="ngModel">
         <div>
@@ -86,7 +86,7 @@
     </div>
 
     <div class="form-group">
-      <label for="description">Description</label>
+      <label for="description">Description<span class="required">*</span></label>
       <textarea id="description" name="description" [(ngModel)]="product.description" required rows="1"
         #description="ngModel" placeholder="Describe the product features..."></textarea>
       <div>
@@ -103,13 +103,14 @@
     <div class="form-group">
       <label for="mediaUrl">Product Image URL</label>
       <div class="split-grid">
-        <input type="text" id="mediaUrl" name="mediaUrl" [(ngModel)]="mediaUrlInput" required #mediaUrlInput="ngModel"
+        <input type="text" id="mediaUrl" name="mediaUrl" [(ngModel)]="mediaUrlInput" #mediaInput="ngModel"
           placeholder="Paste the image url here">
-        <button type="button" class="btn-primary" (click)="addMediaUrl()"
-          [disabled]="mediaUrlInput.invalid || mediaUrlInput.disabled">Add Image</button>
+        <button type="button" class="btn-primary" (click)="addMediaUrl()" [disabled]="mediaInput.invalid">Add
+          Image</button>
       </div>
       <div>
-        <p *ngIf="mediaUrlInput.invalid && mediaUrlInput.touched" style="color: #ec0404a4">Media URL is required</p>
+        <p *ngIf="mediaInput.invalid && mediaInput.touched && mediaUrlInput" style="color: #ec0404a4">Media URL is
+          required</p>
       </div>
 
       <div class="images-list" *ngIf="product.mediaUrls.length">
@@ -137,7 +138,7 @@
         <div class="variant-card" *ngFor="let variant of product.variants; let i = index">
           <div class="form-grid">
             <div class="form-group">
-              <label [for]="'sku-' + i">SKU</label>
+              <label [for]="'sku-' + i">SKU<span class="required">*</span></label>
               <input [id]="'sku-' + i" [name]="'sku-' + i" [(ngModel)]="variant.sku" placeholder="e.g. WH-BLK-M"
                 required #sku="ngModel">
               <div>
@@ -145,14 +146,14 @@
               </div>
             </div>
             <div class="form-group">
-              <label [for]="'v-price-' + i">Variant Price</label>
+              <label [for]="'v-price-' + i">Variant Price<span class="required">*</span></label>
               <input type="number" [id]="'v-price-' + i" [name]="'v-price-' + i" [(ngModel)]="variant.price" required
                 min="1" max="100000" #varprice="ngModel" placeholder="0.00">
               <small *ngIf="varprice.invalid && varprice.touched" style="color: #ec0404a4">Variant Price is
                 required (Min:1, Max:100000)</small>
             </div>
             <div class="form-group">
-              <label [for]="'v-stock-' + i">Variant Stock</label>
+              <label [for]="'v-stock-' + i">Variant Stock<span class="required">*</span></label>
               <input type="number" [id]="'v-stock-' + i" [name]="'v-stock-' + i" [(ngModel)]="variant.stock" required
                 min="1" #varstock="ngModel" placeholder="0">
               <small *ngIf="varstock.invalid && varstock.touched" style="color: #ec0404a4">Variant Stock is required

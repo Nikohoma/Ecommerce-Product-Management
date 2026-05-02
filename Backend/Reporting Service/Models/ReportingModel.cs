@@ -1,4 +1,4 @@
-﻿namespace ReportingService.Models
+namespace ReportingService.Models
 {
     public class ProductReport
     {

@@ -170,6 +170,10 @@ interface VariantFormModel {
 .submit-wrapper:hover .floating-chip {
   opacity: 1;
 }
+.required {
+  color: red;
+  margin-left: 2px;
+}
   `]
 })
 export class ProductFormComponent implements OnInit {
@@ -297,7 +301,7 @@ export class ProductFormComponent implements OnInit {
       this.addMediaUrl();
     }
     if (!this.product.mediaUrls.length) {
-      this.product.mediaUrls = ['https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80'];
+      this.product.mediaUrls = ['https://png.pngtree.com/png-clipart/20190924/original/pngtree-empty-box-icon-for-your-project-png-image_4814103.jpg'];
     }
 
     const payload = {
@@ -305,12 +309,11 @@ export class ProductFormComponent implements OnInit {
       variants: this.product.variants
         .filter(v => v.sku.trim() !== '')
         .map(v => ({
-          productId: this.productId ?? 0,
-          sku: v.sku.trim(),
+          SKU: v.sku.trim(),
           price: Number(v.price) || 0,
           stock: Number(v.stock) || 0,
-          attributes: v.attributes?.trim() || '',
-          imageUrl: v.imageUrl?.trim() || ''
+          attributes: v.attributes?.trim() || undefined,
+          imageUrl: v.imageUrl?.trim() || undefined
         }))
     };
 

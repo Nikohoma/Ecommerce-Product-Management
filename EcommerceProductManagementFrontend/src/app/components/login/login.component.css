@@ -166,3 +166,8 @@
     margin-top: 12px;
     font-size: 0.9rem;
 }
+
+.required {
+    color: red;
+    margin-left: 2px;
+}

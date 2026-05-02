@@ -78,7 +78,6 @@
       <table>
         <thead>
           <tr>
-            <!-- <th>Event</th> -->
             <th>Product ID</th>
             <th>Status</th>
             <th>Date</th>
@@ -87,8 +86,7 @@
         </thead>
         <tbody>
           <tr *ngFor="let item of recentReports">
-            <!-- <td>{{ item.eventName || item.status }}</td> -->
-            <td>#{{ item.productId }}</td>
+            <td>{{ item.productId }}</td>
             <td><span class="badge" [ngClass]="'badge-' + getStatusClass(item.status)">{{ item.status }}</span></td>
             <td>{{ item.updatedAt | date:'mediumDate' }}</td>
             <td>{{ item.updatedAt | date:'shortTime' }}</td>

@@ -21,7 +21,6 @@ namespace CatalogService.Repositories
             _logger = logger;
         }
 
-        // ─── Private Helpers ──────────────────────────────────────────────────────
 
         private async Task<Product> GetProductOrThrowAsync(int productId)
         {
@@ -58,7 +57,7 @@ namespace CatalogService.Repositories
             });
         }
 
-        // ─── CRUD + Search + Filter ───────────────────────────────────────────────
+        // CRUD +SEARCH + FILTER
 
         public async Task CreateProductAsync(Product product)
         {
@@ -186,7 +185,7 @@ namespace CatalogService.Repositories
                     throw new InvalidProductStatusTransitionException(product.Status, ProductStatus.Draft, "FullUpdate");
                 }
 
-                product.Status = ProductStatus.Draft;
+                product.Status = ProductStatus.Submitted;
                 product.Name = updatedProduct.Name;
                 product.Description = updatedProduct.Description;
                 product.Price = updatedProduct.Price;

@@ -79,7 +79,9 @@
         <thead>
           <tr>
             <th>Product ID</th>
-            <th>Status</th>
+            <th *ngIf="role === 'Admin'">Status</th>
+            <th *ngIf="role === 'ProductManager'">Action</th>
+            <th *ngIf="role === 'ContentExecutive'">Media</th>
             <th>Date</th>
             <th>Time (UTC)</th>
           </tr>
@@ -87,12 +89,38 @@
         <tbody>
           <tr *ngFor="let item of recentReports">
             <td>{{ item.productId }}</td>
-            <td><span class="badge" [ngClass]="'badge-' + getStatusClass(item.status)">{{ item.status }}</span></td>
+            <td *ngIf="role === 'Admin'">
+              <span class="badge" [ngClass]="'badge-' + getStatusClass(item.status)">{{ item.status }}</span>
+            </td>
+            <td *ngIf="role === 'ProductManager'">
+              {{ getActivityLabel(item) }}
+              <span *ngIf="item.oldPrice != null && item.newPrice != null"> ({{ item.oldPrice }} → {{ item.newPrice }})</span>
+              <span *ngIf="item.oldStock != null && item.newStock != null"> ({{ item.oldStock }} → {{ item.newStock }})</span>
+            </td>
+            <td *ngIf="role === 'ContentExecutive'">
+              <span *ngIf="item.mediaUrl; else noMedia">{{ item.mediaUrl }}</span>
+              <ng-template #noMedia>Media Uploaded</ng-template>
+            </td>
             <td>{{ item.updatedAt | date:'mediumDate' }}</td>
             <td>{{ item.updatedAt | date:'shortTime' }}</td>
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <div class="pagination-container" *ngIf="recentTotalCount > recentPageSize">
+      <button class="pagination-btn" [disabled]="recentPage === 1" (click)="changeRecentPage(recentPage - 1)">
+        Previous
+      </button>
+
+      <span class="page-info">
+        Page <strong>{{ recentPage }}</strong> of <strong>{{ recentTotalPages }}</strong>
+      </span>
+
+      <button class="pagination-btn" [disabled]="recentPage === recentTotalPages"
+        (click)="changeRecentPage(recentPage + 1)">
+        Next
+      </button>
     </div>
   </div>
 

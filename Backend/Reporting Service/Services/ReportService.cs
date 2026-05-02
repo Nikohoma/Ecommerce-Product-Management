@@ -3,17 +3,20 @@ using Microsoft.Extensions.Logging;
 using ReportingService.Exceptions;
 using ReportingService.Models;
 using ReportingService.Repository;
+using Microsoft.EntityFrameworkCore;
 
 namespace ReportingService.Services
 {
     public class ReportService : IReportService
     {
         private readonly IReportRepository _repository;
+        private readonly ReportingDbContext _db;
         private readonly ILogger<ReportService> _logger;
 
-        public ReportService(IReportRepository repository, ILogger<ReportService> logger)
+        public ReportService(IReportRepository repository, ReportingDbContext db, ILogger<ReportService> logger)
         {
             _repository = repository;
+            _db = db;
             _logger = logger;
         }
 
@@ -114,6 +117,118 @@ namespace ReportingService.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error fetching recent reports");
+                throw new RecentReportsException(ex);
+            }
+        }
+
+        public async Task<List<ProductActivity>> GetRecentActivitiesAsync(string category)
+        {
+            var cutoff = DateTime.UtcNow.AddDays(-7);
+            var normalized = (category ?? string.Empty).Trim().ToLowerInvariant();
+
+            try
+            {
+                var query = _db.ProductActivities.AsNoTracking().Where(a => a.UpdatedAt >= cutoff);
+
+                if (normalized == "logistics")
+                {
+                    query = query.Where(a =>
+                        a.ActivityType == "ProductCreated" ||
+                        a.ActivityType == "PriceUpdated" ||
+                        a.ActivityType == "StockUpdated");
+                }
+                else if (normalized == "media")
+                {
+                    query = query.Where(a => a.ActivityType == "MediaUploaded");
+                }
+
+                var recent = await query
+                    .OrderByDescending(a => a.UpdatedAt)
+                    .Take(50)
+                    .ToListAsync();
+
+                _logger.LogInformation("Recent activities fetched — Category: {Category}, Count: {Count}", normalized, recent.Count);
+                return recent;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error fetching recent activities");
+                throw new RecentReportsException(ex);
+            }
+        }
+
+        public async Task<PaginatedResult<ProductReport>> GetRecentReportsPagedAsync(int page, int pageSize)
+        {
+            var cutoff = DateTime.UtcNow.AddDays(-7);
+            page = page < 1 ? 1 : page;
+            pageSize = pageSize < 1 ? 10 : pageSize;
+
+            try
+            {
+                var query = _db.ProductReports.AsNoTracking().Where(r => r.UpdatedAt >= cutoff);
+                var total = await query.CountAsync();
+                var items = await query
+                    .OrderByDescending(r => r.UpdatedAt)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                return new PaginatedResult<ProductReport>
+                {
+                    Items = items,
+                    TotalCount = total,
+                    Page = page,
+                    PageSize = pageSize
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error fetching recent reports (paged)");
+                throw new RecentReportsException(ex);
+            }
+        }
+
+        public async Task<PaginatedResult<ProductActivity>> GetRecentActivitiesPagedAsync(string category, int page, int pageSize)
+        {
+            var cutoff = DateTime.UtcNow.AddDays(-7);
+            var normalized = (category ?? string.Empty).Trim().ToLowerInvariant();
+            page = page < 1 ? 1 : page;
+            pageSize = pageSize < 1 ? 10 : pageSize;
+
+            try
+            {
+                var query = _db.ProductActivities.AsNoTracking().Where(a => a.UpdatedAt >= cutoff);
+
+                if (normalized == "logistics")
+                {
+                    query = query.Where(a =>
+                        a.ActivityType == "ProductCreated" ||
+                        a.ActivityType == "PriceUpdated" ||
+                        a.ActivityType == "StockUpdated");
+                }
+                else if (normalized == "media")
+                {
+                    query = query.Where(a => a.ActivityType == "MediaUploaded");
+                }
+
+                var total = await query.CountAsync();
+                var items = await query
+                    .OrderByDescending(a => a.UpdatedAt)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                return new PaginatedResult<ProductActivity>
+                {
+                    Items = items,
+                    TotalCount = total,
+                    Page = page,
+                    PageSize = pageSize
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error fetching recent activities (paged)");
                 throw new RecentReportsException(ex);
             }
         }

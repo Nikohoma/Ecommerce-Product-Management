@@ -8,6 +8,13 @@ export interface DashboardData {
   totalInventoryValue: number;
 }
 
+export interface PaginatedResult<T> {
+  items: T[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -24,6 +31,14 @@ export class ReportingService {
   }
 
   getRecentReports() {
-    return this.http.get<any[]>(`${this.apiUrl}/recent`);
+    return this.http.get<PaginatedResult<any>>(`${this.apiUrl}/recent`, {
+      params: { page: '1', pageSize: '10' }
+    });
+  }
+
+  getRecentReportsPaged(page: number, pageSize: number) {
+    return this.http.get<PaginatedResult<any>>(`${this.apiUrl}/recent`, {
+      params: { page: page.toString(), pageSize: pageSize.toString() }
+    });
   }
 }

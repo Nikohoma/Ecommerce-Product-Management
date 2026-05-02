@@ -7,4 +7,5 @@ public class ReportingDbContext : DbContext
         : base(options) { }
 
     public DbSet<ProductReport> ProductReports { get; set; }
+    public DbSet<ProductActivity> ProductActivities { get; set; }
 }

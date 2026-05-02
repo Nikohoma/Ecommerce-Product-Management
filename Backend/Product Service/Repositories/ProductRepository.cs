@@ -57,6 +57,9 @@ namespace CatalogService.Repositories
             });
         }
 
+        private Task PublishActivityEventAsync(ProductActivityEvent evt)
+            => _publish.SendProductActivityForReporting(evt);
+
         // CRUD +SEARCH + FILTER
 
         public async Task CreateProductAsync(Product product)
@@ -79,6 +82,16 @@ namespace CatalogService.Repositories
                 await _context.SaveChangesAsync();
                 _logger.LogInformation("Product {ProductId} created.", product.Id);
                 await PublishStatusEventAsync(product);
+
+                // Also publish a creation activity so ProductManager "Recent Activity" includes newly created products.
+                await PublishActivityEventAsync(new ProductActivityEvent
+                {
+                    ProductId = product.Id,
+                    ActivityType = "ProductCreated",
+                    UpdatedAt = DateTime.UtcNow,
+                    NewPrice = product.Price,
+                    NewStock = product.AvailableQuantity
+                });
             }
             catch (CatalogException) { throw; }  
             catch (DbUpdateException ex)
@@ -176,6 +189,11 @@ namespace CatalogService.Repositories
             {
                 var product = await GetProductOrThrowAsync(id);
 
+                var existingMediaUrls = product.Media
+                    .Select(m => m.MediaUrl)
+                    .Where(u => !string.IsNullOrWhiteSpace(u))
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
                 if (product.Status != ProductStatus.Draft && product.Status != ProductStatus.Submitted &&
                     product.Status != ProductStatus.Rejected &&
                     product.Status != ProductStatus.Inactive &&
@@ -202,6 +220,13 @@ namespace CatalogService.Repositories
                     });
                 }
 
+                var newMediaUrls = updatedProduct.Media
+                    .Select(m => m.MediaUrl)
+                    .Where(u => !string.IsNullOrWhiteSpace(u))
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                var addedMedia = newMediaUrls.Except(existingMediaUrls).ToList();
+
                 var existingVariants = await _context.ProductVariants
                     .Where(v => v.ProductId == product.Id)
                     .ToListAsync();
@@ -223,6 +248,17 @@ namespace CatalogService.Repositories
                 await _context.SaveChangesAsync();
                 _logger.LogInformation("Product {ProductId} updated.", id);
                 await PublishStatusEventAsync(product);
+
+                foreach (var url in addedMedia)
+                {
+                    await PublishActivityEventAsync(new ProductActivityEvent
+                    {
+                        ProductId = product.Id,
+                        ActivityType = "MediaUploaded",
+                        UpdatedAt = DateTime.UtcNow,
+                        MediaUrl = url
+                    });
+                }
             }
             catch (CatalogException) { throw; }
             catch (DbUpdateException ex)
@@ -402,10 +438,20 @@ namespace CatalogService.Repositories
             {
                 var product = await GetProductOrThrowAsync(productId);
 
+                var oldPrice = product.Price;
                 product.Price = newPrice;
                 await _context.SaveChangesAsync();
                 _logger.LogInformation("Price updated for product {ProductId} → {Price}.", productId, newPrice);
                 await PublishStatusEventAsync(product);
+
+                await PublishActivityEventAsync(new ProductActivityEvent
+                {
+                    ProductId = productId,
+                    ActivityType = "PriceUpdated",
+                    UpdatedAt = DateTime.UtcNow,
+                    OldPrice = oldPrice,
+                    NewPrice = newPrice
+                });
             }
             catch (CatalogException) { throw; }
             catch (Exception ex)
@@ -423,9 +469,19 @@ namespace CatalogService.Repositories
             try
             {
                 var product = await GetProductOrThrowAsync(productId);
+                var oldStock = product.AvailableQuantity;
                 product.AvailableQuantity = quantity;
                 await _context.SaveChangesAsync();
                 _logger.LogInformation("Stock updated for product {ProductId} → {Quantity}.", productId, quantity);
+
+                await PublishActivityEventAsync(new ProductActivityEvent
+                {
+                    ProductId = productId,
+                    ActivityType = "StockUpdated",
+                    UpdatedAt = DateTime.UtcNow,
+                    OldStock = oldStock,
+                    NewStock = quantity
+                });
             }
             catch (CatalogException) { throw; }
             catch (Exception ex)

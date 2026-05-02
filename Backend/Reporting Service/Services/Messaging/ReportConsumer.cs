@@ -121,16 +121,32 @@ public class ReportConsumer : BackgroundService
             var json = Encoding.UTF8.GetString(eventArgs.Body.ToArray());
             _logger.LogDebug("Raw message received: {Json}", json);
 
-            ProductStatusChangedEvent? message;
-
             try
             {
-                message = JsonSerializer.Deserialize<ProductStatusChangedEvent>(json);
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
 
-                if (message == null)
+                if (root.TryGetProperty("ActivityType", out _))
                 {
-                    _logger.LogWarning("Deserialized message was null — skipping. Payload: {Json}", json);
-                    return;
+                    var activity = JsonSerializer.Deserialize<ProductActivityEvent>(json);
+                    if (activity is null)
+                    {
+                        _logger.LogWarning("Deserialized ProductActivityEvent was null — skipping. Payload: {Json}", json);
+                        return;
+                    }
+
+                    await PersistActivityAsync(activity);
+                }
+                else
+                {
+                    var status = JsonSerializer.Deserialize<ProductStatusChangedEvent>(json);
+                    if (status is null)
+                    {
+                        _logger.LogWarning("Deserialized ProductStatusChangedEvent was null — skipping. Payload: {Json}", json);
+                        return;
+                    }
+
+                    await PersistReportAsync(status);
                 }
             }
             catch (JsonException ex)
@@ -138,8 +154,6 @@ public class ReportConsumer : BackgroundService
                 _logger.LogError(ex, "Message deserialization failed. Payload: {Json}", json);
                 throw new MessageDeserializationException(ex);
             }
-
-            await PersistReportAsync(message);
         };
 
         await _channel.BasicConsumeAsync(
@@ -184,6 +198,41 @@ public class ReportConsumer : BackgroundService
         {
             _logger.LogError(ex,
                 "Failed to persist report for ProductId {ProductId}",
+                message.ProductId);
+            throw new ReportPersistenceException(message.ProductId, ex);
+        }
+    }
+
+    private async Task PersistActivityAsync(ProductActivityEvent message)
+    {
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ReportingDbContext>();
+
+            var activity = new ProductActivity
+            {
+                ProductId = message.ProductId,
+                ActivityType = message.ActivityType,
+                UpdatedAt = message.UpdatedAt,
+                OldPrice = message.OldPrice,
+                NewPrice = message.NewPrice,
+                OldStock = message.OldStock,
+                NewStock = message.NewStock,
+                MediaUrl = message.MediaUrl
+            };
+
+            db.ProductActivities.Add(activity);
+            await db.SaveChangesAsync();
+
+            _logger.LogInformation(
+                "Activity saved — ProductId: {ProductId}, Type: {Type}, UpdatedAt: {UpdatedAt}",
+                message.ProductId, message.ActivityType, message.UpdatedAt);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to persist activity for ProductId {ProductId}",
                 message.ProductId);
             throw new ReportPersistenceException(message.ProductId, ex);
         }

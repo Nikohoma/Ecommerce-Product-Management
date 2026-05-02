@@ -36,6 +36,7 @@ export class CatalogComponent implements OnInit {
   detailsLoading = false;
   selectedProductForDetails: Product | null = null;
   selectedProductVariants: ProductVariant[] = [];
+  selectedImageIndex = 0;
 
   // Pagination
   currentPage = 1;
@@ -260,6 +261,7 @@ export class CatalogComponent implements OnInit {
     this.selectedProductForDetails = product;
     this.selectedProductVariants = [];
     this.detailsLoading = true;
+    this.selectedImageIndex = 0;
     this.showDetailsModal = true;
 
     this.productService.getVariantsByProduct(product.id).subscribe({
@@ -279,6 +281,37 @@ export class CatalogComponent implements OnInit {
     this.selectedProductForDetails = null;
     this.selectedProductVariants = [];
     this.detailsLoading = false;
+    this.selectedImageIndex = 0;
+  }
+
+  getSelectedProductImages(): { mediaUrl: string; mediaType: string }[] {
+    const media = (this.selectedProductForDetails as any)?.media;
+    return Array.isArray(media) ? media : (media?.$values && Array.isArray(media.$values) ? media.$values : []);
+  }
+
+  getActiveImageUrl(): string {
+    const images = this.getSelectedProductImages();
+    if (!images.length) return '';
+    const idx = Math.min(Math.max(this.selectedImageIndex, 0), images.length - 1);
+    return images[idx]?.mediaUrl || '';
+  }
+
+  prevImage() {
+    const images = this.getSelectedProductImages();
+    if (images.length <= 1) return;
+    this.selectedImageIndex = (this.selectedImageIndex - 1 + images.length) % images.length;
+  }
+
+  nextImage() {
+    const images = this.getSelectedProductImages();
+    if (images.length <= 1) return;
+    this.selectedImageIndex = (this.selectedImageIndex + 1) % images.length;
+  }
+
+  setImageIndex(index: number) {
+    const images = this.getSelectedProductImages();
+    if (index < 0 || index >= images.length) return;
+    this.selectedImageIndex = index;
   }
 
   getVariantAttributesText(attributes: string): string {

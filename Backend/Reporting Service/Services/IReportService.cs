@@ -17,6 +17,9 @@ namespace ReportingService.Services
         Task<DashboardDto> GetDashboardAsync();
         Task<double> GetApprovalRateAsync();
         Task<List<ProductReport>> GetRecentReportsAsync();
+        Task<List<ProductActivity>> GetRecentActivitiesAsync(string category);
+        Task<PaginatedResult<ProductReport>> GetRecentReportsPagedAsync(int page, int pageSize);
+        Task<PaginatedResult<ProductActivity>> GetRecentActivitiesPagedAsync(string category, int page, int pageSize);
 
     }
 }

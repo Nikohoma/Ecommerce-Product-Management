@@ -374,7 +374,11 @@ namespace CatalogService.Repositories
             {
                 var product = await GetProductOrThrowAsync(productId);
 
-                if (product.Status != ProductStatus.Submitted && product.Status != ProductStatus.Active && product.Status != ProductStatus.Approved)
+                // Allow Admin to reject directly from Draft as well (no need to submit first).
+                if (product.Status != ProductStatus.Draft
+                    && product.Status != ProductStatus.Submitted
+                    && product.Status != ProductStatus.Active
+                    && product.Status != ProductStatus.Approved)
                     throw new InvalidProductStatusTransitionException(product.Status, ProductStatus.Submitted, "Reject");
 
                 product.Status = ProductStatus.Rejected;

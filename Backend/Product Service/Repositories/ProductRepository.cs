@@ -331,7 +331,7 @@ namespace CatalogService.Repositories
             {
                 var product = await GetProductOrThrowAsync(productId);
 
-                if (product.Status != ProductStatus.Draft)
+                if (product.Status != ProductStatus.Draft && product.Status != ProductStatus.Rejected)
                     throw new InvalidProductStatusTransitionException(product.Status, ProductStatus.Draft, "Submit");
 
                 product.Status = ProductStatus.Submitted;
@@ -353,7 +353,7 @@ namespace CatalogService.Repositories
             {
                 var product = await GetProductOrThrowAsync(productId);
 
-                if (product.Status != ProductStatus.Submitted)
+                if (product.Status != ProductStatus.Submitted && product.Status != ProductStatus.Draft && product.Status != ProductStatus.Rejected)
                     throw new InvalidProductStatusTransitionException(product.Status, ProductStatus.Submitted, "Approve");
 
                 product.Status = ProductStatus.Active;
@@ -375,7 +375,7 @@ namespace CatalogService.Repositories
             {
                 var product = await GetProductOrThrowAsync(productId);
 
-                if (product.Status != ProductStatus.Submitted)
+                if (product.Status != ProductStatus.Submitted && product.Status != ProductStatus.Active && product.Status != ProductStatus.Approved)
                     throw new InvalidProductStatusTransitionException(product.Status, ProductStatus.Submitted, "Reject");
 
                 product.Status = ProductStatus.Rejected;

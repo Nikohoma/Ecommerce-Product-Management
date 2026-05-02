@@ -172,8 +172,25 @@ export class CatalogComponent implements OnInit {
     let obs;
     if (action === 'submit') obs = this.workflowService.submit(productId);
     else if (action === 'approve') obs = this.workflowService.approve(productId);
-    else obs = this.workflowService.reject(productId);
-    obs.subscribe(() => this.loadProducts());
+    else if (action === 'reject') obs = this.workflowService.reject(productId);
+    else obs = this.workflowService.setStatus(productId, action);
+
+    obs.subscribe({
+      next: () => {
+        let statusText = '';
+        if (action === 'submit') statusText = 'Submitted';
+        else if (action === 'approve') statusText = 'Approved/Active';
+        else if (action === 'reject') statusText = 'Rejected';
+        else statusText = action;
+
+        alert(`Product status has been updated to ${statusText} successfully.`);
+        this.loadProducts();
+      },
+      error: (err) => {
+        console.error('Workflow error:', err);
+        alert('Failed to update product status. ' + this.getBackendErrorMessage(err));
+      }
+    });
   }
 
   // Logistics Methods
@@ -222,8 +239,10 @@ export class CatalogComponent implements OnInit {
     return JSON.stringify(err);
   }
 
-  openStatusModal(productId: number) {
-    this.selectedProductId = productId;
+  selectedProductForStatus: Product | null = null;
+  openStatusModal(product: Product) {
+    this.selectedProductId = product.id;
+    this.selectedProductForStatus = product;
     this.selectedStatusAction = 'submit';
     this.showStatusModal = true;
   }
@@ -231,6 +250,7 @@ export class CatalogComponent implements OnInit {
   closeStatusModal() {
     this.showStatusModal = false;
     this.selectedProductId = null;
+    this.selectedProductForStatus = null;
   }
 
   applyStatusChange() {
@@ -404,7 +424,7 @@ export class CatalogComponent implements OnInit {
     const name = this.getStatusName(status).toLowerCase();
     if (action === 'submit') return name === 'submitted' || name === 'approved' || name === 'active';
     if (action === 'approve') return name === 'approved' || name === 'active';
-    if (action === 'reject') return name === 'rejected';
+    if (action === 'reject') return false; // Allow rejection irrespective of status as per admin requirement
     return false;
   }
 }

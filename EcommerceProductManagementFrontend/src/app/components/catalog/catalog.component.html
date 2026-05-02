@@ -52,7 +52,7 @@
           <!-- ADMIN: Workflow Management -->
           <div *ngSwitchCase="'Admin'" class="action-group">
             <button (click)="openDetailsModal(p)" class="btn-sm btn-primary">View Details</button>
-            <button (click)="openStatusModal(p.id)" class="btn-sm btn-outline-warning">Change Status</button>
+            <button (click)="openStatusModal(p)" class="btn-sm btn-outline-warning">Change Status</button>
             <button (click)="editProduct(p.id)" class="btn btn-sm btn-danger">Edit</button>
           </div>
 
@@ -89,7 +89,7 @@
     </div>
   </div>
 
-  <!-- Pagination Controls -->
+  <!-- Pagination -->
   <div class="pagination-container" *ngIf="totalProducts > pageSize && !searchQuery">
     <button class="pagination-btn" [disabled]="currentPage === 1" (click)="changePage(currentPage - 1)">
       Previous
@@ -148,8 +148,9 @@
   <div class="modal-card">
     <h3>Change Product Status</h3>
     <select [(ngModel)]="selectedStatusAction">
-      <option value="submit">Submitted</option>
-      <option value="approve">Active</option>
+      <option value="submit" [disabled]="isActionDisabled(selectedProductForStatus?.status, 'submit')">Submitted
+      </option>
+      <option value="approve" [disabled]="isActionDisabled(selectedProductForStatus?.status, 'approve')">Active</option>
       <option value="reject">Rejected</option>
     </select>
     <div class="modal-actions">
@@ -168,7 +169,10 @@
     <div style="margin-bottom: 12px;">
       <label style="display: block; font-size: 0.85rem; margin-bottom: 4px; color: #475569;">Media URL</label>
       <input type="text" [(ngModel)]="mediaUrl" placeholder="https://example.com/image.jpg"
-        style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; color: #1e293b;">
+        style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; color: #1e293b;" required
+        #mediaUrlNgModel="ngModel">
+      <small *ngIf="mediaUrlNgModel.invalid && mediaUrlNgModel.touched" style="color: red;">Media URL is
+        required</small>
     </div>
 
     <div style="margin-bottom: 16px;">

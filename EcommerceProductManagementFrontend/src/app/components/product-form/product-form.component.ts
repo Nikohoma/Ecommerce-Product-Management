@@ -143,6 +143,33 @@ interface VariantFormModel {
       color: #64748b;
       font-size: 0.8rem;
     }
+      .submit-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.floating-chip {
+  position: absolute;
+  bottom: 110%;
+  left: 50%;
+  transform: translateX(-50%);
+  
+  background: #1f2937;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  white-space: nowrap;
+
+  opacity: 0;
+  pointer-events: none;
+  transition: 0.2s ease;
+}
+
+/* show on hover */
+.submit-wrapper:hover .floating-chip {
+  opacity: 1;
+}
   `]
 })
 export class ProductFormComponent implements OnInit {
@@ -170,6 +197,7 @@ export class ProductFormComponent implements OnInit {
   categories: Category[] = [];
   newCategoryName = '';
   addingCategory = false;
+  showAddCategory = false;
 
   onTagsChange(value: string) {
     this.tagsString = value;
@@ -183,7 +211,7 @@ export class ProductFormComponent implements OnInit {
       this.editMode = true;
       this.productId = +idParam;
       this.productService.getProduct(this.productId).subscribe(p => {
-        // Populate form fields with existing product data
+        // Populate with existing product data
         this.product = {
           name: p.name,
           description: p.description,
@@ -212,16 +240,20 @@ export class ProductFormComponent implements OnInit {
     });
   }
 
+
   addCategory() {
     const categoryName = this.newCategoryName.trim();
     if (!categoryName || this.addingCategory) return;
 
     this.addingCategory = true;
+
     this.productService.createCategory(categoryName).subscribe({
       next: (created) => {
         this.newCategoryName = '';
         this.product.categoryId = created.id;
         this.loadCategories();
+
+        this.showAddCategory = false;
         this.addingCategory = false;
       },
       error: (err) => {

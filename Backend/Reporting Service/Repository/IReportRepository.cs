@@ -2,6 +2,9 @@
 
 namespace ReportingService.Repository
 {
+    /// <summary>
+    /// Interface containing methods for Report Repository
+    /// </summary>
     public interface IReportRepository
     {
         Task<int> GetApprovedCountAsync();

@@ -1,5 +1,4 @@
-﻿// Exceptions/CatalogException.cs
-using CatalogService.Models;
+﻿using CatalogService.Models;
 
 namespace CatalogService.Exceptions
 {
@@ -48,7 +47,7 @@ namespace CatalogService.Exceptions
             => (SKU, ProductId) = (sku, productId);
     }
 
-    // 422 — lifecycle/state violations
+    // 422 lifecycle/state violations
     public class InvalidProductStatusTransitionException : CatalogException
     {
         public ProductStatus Current { get; }
@@ -59,11 +58,10 @@ namespace CatalogService.Exceptions
             => (Current, Expected) = (current, expected);
     }
 
-    // 422 — bad input
+    // 422 bad input
     public class NegativeStockException : CatalogException
     {
-        public NegativeStockException()
-            : base("NEGATIVE_STOCK", "Stock quantity cannot be negative.") { }
+        public NegativeStockException(): base("NEGATIVE_STOCK", "Stock quantity cannot be negative.") { }
     }
 
     public class InsufficientStockException : CatalogException

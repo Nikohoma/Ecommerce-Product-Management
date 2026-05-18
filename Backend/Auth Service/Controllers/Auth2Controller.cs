@@ -58,7 +58,7 @@ namespace AuthService.Controllers
             return Ok(new{token = access, refreshToken = refresh});
         }
 
-        // Customer registration endpoint for frontend. Keeps /register/verify unchanged.
+        // Customer registration endpoint for frontend. 
         [HttpPost("register/customer/verify")]
         public async Task<IActionResult> CustomerRegisterVerifyCustomer([FromBody] RegisterCustomer dto)
         {
@@ -202,9 +202,8 @@ namespace AuthService.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateUser([FromBody] UpdateUserDto dto)
         {
-            var currentEmail = User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value 
-                             ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-                             ?? User.Identity?.Name;
+            var currentEmail = User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                             ??User.Identity?.Name;
 
             if (string.Equals(currentEmail, dto.Email, StringComparison.OrdinalIgnoreCase)) 
                 return BadRequest("Admin cannot change their own role or status.");

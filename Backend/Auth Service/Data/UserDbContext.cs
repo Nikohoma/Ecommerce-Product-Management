@@ -5,29 +5,31 @@ using System.Security.Claims;
 
 namespace ECommerceProductManagement.Data
 {
+    /// <summary>
+    /// Db Context implementation.
+    /// Contains DbSet
+    /// </summary>
     public class UserDbContext : DbContext
     {
         private readonly IHttpContextAccessor _httpContextAccessor;
+        // DI
         public UserDbContext(DbContextOptions<UserDbContext> options, IHttpContextAccessor httpContextAccessor): base(options) 
         {
             _httpContextAccessor = httpContextAccessor;
         }
 
+        // Tables
         public DbSet<User> Users { get; set; }
         public DbSet<OtpRecord> OtpRecords { get; set; }
 
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
-            var entries = ChangeTracker
-                .Entries<Audit>();
+            var entries = ChangeTracker.Entries<Audit>();
 
             var user = _httpContextAccessor.HttpContext?.User;
 
-            var currentUser = user?.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                ?? user?.FindFirst(ClaimTypes.Name)?.Value
-                ?? user?.FindFirst(ClaimTypes.Email)?.Value
-                ?? "system";
+            var currentUser = user?.FindFirst(ClaimTypes.NameIdentifier)?.Value?? user?.FindFirst(ClaimTypes.Name)?.Value?? user?.FindFirst(ClaimTypes.Email)?.Value?? "system";
 
             foreach (var entry in entries)
             {

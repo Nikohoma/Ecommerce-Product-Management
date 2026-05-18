@@ -8,7 +8,7 @@ using Ocelot.DependencyInjection;
 using Ocelot.Middleware;
 using System.Text;
 
-// Boot NLog before anything else
+// Start NLog first
 var logger = LogManager.Setup()
     .LoadConfigurationFromFile("nlog.config")
     .GetCurrentClassLogger();

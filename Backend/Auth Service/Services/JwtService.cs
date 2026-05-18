@@ -18,7 +18,14 @@ namespace Auth.Services
             _config = config;
             _logger = logger;
         }
-
+        /// <summary>
+        /// Generates JWT token
+        /// </summary>
+        /// <param name="email"></param>
+        /// <param name="role"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="JwtGenerationException"></exception>
         public string GenerateToken(string email, string role)
         {
             if (string.IsNullOrWhiteSpace(email))
@@ -76,7 +83,11 @@ namespace Auth.Services
                 throw new RefreshTokenGenerationException(ex);
             }
         }
-
+        /// <summary>
+        /// Assigns key and issuer from appsettings.json 
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="JwtConfigurationException"></exception>
         private (string keyStr, string issuer, int expiryHours) ResolveConfig()
         {
             var keyStr = _config["Jwt:Key"];
@@ -100,10 +111,10 @@ namespace Auth.Services
         {
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.Name,           email),
+                new Claim(ClaimTypes.Name, email),
                 new Claim(ClaimTypes.NameIdentifier, email),
-                new Claim(ClaimTypes.Email,          email),
-                new Claim(ClaimTypes.Role,           role),
+                new Claim(ClaimTypes.Email,email),
+                new Claim(ClaimTypes.Role, role),
             };
 
             foreach (var key in new[] { "Jwt:Audience0", "Jwt:Audience1", "Jwt:Audience2", "Jwt:Audience3", "Jwt:Audience4" })

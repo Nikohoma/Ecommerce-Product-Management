@@ -24,11 +24,26 @@ namespace Auth.Services
             _logger = logger;
         }
 
+        /// <summary>
+        /// Directs to the method residing in User Repository
+        /// </summary>
+        /// <param name="email"></param>
+        /// <returns></returns>
         public Task<bool> EmailExistsAsync(string email) =>_repo.EmailExistsAsync(email);
-
+        /// <summary>
+        /// Directs to the method residing in User Repository
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
         public Task<bool> UsernameExistsAsync(string name) =>_repo.UsernameExistsAsync(name);
 
-
+        /// <summary>
+        /// Method to send otp. Directs to the method present in OtpService
+        /// </summary>
+        /// <param name="email"></param>
+        /// <param name="purpose"></param>
+        /// <returns></returns>
+        /// <exception cref="OtpDeliveryException"></exception>
         public async Task SendOtpAsync(string email, string purpose)
         {
             try
@@ -40,7 +55,14 @@ namespace Auth.Services
                 _logger.LogError(ex, "OTP sending failed for {Email}", email); throw new OtpDeliveryException(email, ex);
             }
         }
-
+        /// <summary>
+        /// Directs to the method inside OtpService
+        /// </summary>
+        /// <param name="email"></param>
+        /// <param name="otp"></param>
+        /// <param name="purpose"></param>
+        /// <returns></returns>
+        /// <exception cref="OtpValidationException"></exception>
         public async Task<bool> ValidateOtpAsync(string email, string otp, string purpose)
         {
             try
@@ -56,9 +78,16 @@ namespace Auth.Services
             }
         }
 
-
-        public async Task<(string accessToken, string refreshToken)> RegisterAsync(
-            string name, string email, string password, string role = "Admin")
+        /// <summary>
+        /// Insider method to register a new admin
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="email"></param>
+        /// <param name="password"></param>
+        /// <param name="role"></param>
+        /// <returns></returns>
+        /// <exception cref="RegistrationException"></exception>
+        public async Task<(string accessToken, string refreshToken)> RegisterAsync(string name, string email, string password, string role = "Admin")
         {
             try
             {
@@ -77,6 +106,14 @@ namespace Auth.Services
             }
         }
 
+        /// <summary>
+        /// Method to login.
+        /// Validates the credentials and check if user exists first.
+        /// </summary>
+        /// <param name="email"></param>
+        /// <param name="password"></param>
+        /// <returns></returns>
+        /// <exception cref="LoginException"></exception>
         public async Task<(string accessToken, string refreshToken)?> LoginAsync(string email, string password)
         {
             try
@@ -105,6 +142,13 @@ namespace Auth.Services
                 throw new LoginException(email, ex);
             }
         }
+        /// <summary>
+        /// Method to login with otp.
+        /// First checks if user exists.
+        /// </summary>
+        /// <param name="email"></param>
+        /// <returns></returns>
+        /// <exception cref="LoginException"></exception>
 
         public async Task<(string accessToken, string refreshToken)?> LoginWithOtpAsync(string email)
         {
@@ -126,7 +170,13 @@ namespace Auth.Services
             }
         }
 
-
+        /// <summary>
+        /// Method to refresh token.
+        /// Checks if the refresh token is expired first.
+        /// </summary>
+        /// <param name="refreshToken"></param>
+        /// <returns></returns>
+        /// <exception cref="TokenRefreshException"></exception>
         public async Task<TokenResponse> RefreshAsync(string refreshToken)
         {
             try
@@ -163,7 +213,12 @@ namespace Auth.Services
                 throw new TokenRefreshException(ex);
             }
         }
-
+        /// <summary>
+        /// Method to logout by revoking the refresh token.
+        /// </summary>
+        /// <param name="refreshToken"></param>
+        /// <returns></returns>
+        /// <exception cref="LogoutException"></exception>
         public async Task<bool> LogoutAsync(string refreshToken)
         {
             try
@@ -188,7 +243,13 @@ namespace Auth.Services
             }
         }
 
-
+        /// <summary>
+        /// Reset password only if user exists.
+        /// </summary>
+        /// <param name="email"></param>
+        /// <param name="newPassword"></param>
+        /// <returns></returns>
+        /// <exception cref="PasswordResetException"></exception>
         public async Task<bool> ResetPasswordAsync(string email, string newPassword)
         {
             try
@@ -196,7 +257,7 @@ namespace Auth.Services
                 var user = await _repo.GetByEmailAsync(email);
                 if (user == null)
                 {
-                    _logger.LogWarning("Password reset failed — user not found: {Email}", email);
+                    _logger.LogWarning("Password reset failed, user not found: {Email}", email);
                     return false;
                 }
                 user.PasswordHash = _hash.Hash(newPassword);
@@ -213,7 +274,10 @@ namespace Auth.Services
                 throw new PasswordResetException(email, ex);
             }
         }
-
+        /// <summary>
+        /// Retreives all user from Db
+        /// </summary>
+        /// <returns></returns>
         public Task<IEnumerable<User>> GetAllUsersAsync() => _repo.GetAllUsersAsync();
         
         public async Task<bool> UpdateUserAsync(string email, string role, bool isActive)
@@ -241,7 +305,12 @@ namespace Auth.Services
             }
         }
 
-
+        /// <summary>
+        /// private helper that issues access token
+        /// </summary>
+        /// <param name="user"></param>
+        /// <returns></returns>
+        /// <exception cref="TokenIssuanceException"></exception>
         private async Task<(string accessToken, string refreshToken)> IssueTokensAsync(User user)
         {
             try

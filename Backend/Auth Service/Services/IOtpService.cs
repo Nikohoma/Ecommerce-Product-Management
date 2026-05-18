@@ -1,5 +1,8 @@
 ﻿namespace Auth.Services
 {
+    /// <summary>
+    /// Interface containing method for Otp Service
+    /// </summary>
     public interface IOtpService
     {
         Task SendOtpAsync(string email, string purpose);

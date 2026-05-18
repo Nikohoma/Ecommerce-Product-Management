@@ -21,7 +21,12 @@ namespace CatalogService.Repositories
             _logger = logger;
         }
 
-
+        /// <summary>
+        /// Retreives the product from the Db
+        /// </summary>
+        /// <param name="productId"></param>
+        /// <returns></returns>
+        /// <exception cref="ProductNotFoundException"></exception>
         private async Task<Product> GetProductOrThrowAsync(int productId)
         {
             var product = await _context.Products
@@ -34,7 +39,12 @@ namespace CatalogService.Repositories
             }
             return product;
         }
-
+        /// <summary>
+        /// Retreives variant from the Db
+        /// </summary>
+        /// <param name="variantId"></param>
+        /// <returns></returns>
+        /// <exception cref="VariantNotFoundException"></exception>
         private async Task<ProductVariant> GetVariantOrThrowAsync(int variantId)
         {
             var variant = await _context.ProductVariants.FirstOrDefaultAsync(v => v.Id == variantId);
@@ -45,7 +55,11 @@ namespace CatalogService.Repositories
             }
             return variant;
         }
-
+        /// <summary>
+        /// Send product to Reporting layer when the status is changed.
+        /// </summary>
+        /// <param name="product"></param>
+        /// <returns></returns>
         private async Task PublishStatusEventAsync(Product product)
         {
             await _publish.SendProductForReporting(new ProductStatusChangedEvent
@@ -57,8 +71,7 @@ namespace CatalogService.Repositories
             });
         }
 
-        private Task PublishActivityEventAsync(ProductActivityEvent evt)
-            => _publish.SendProductActivityForReporting(evt);
+        private Task PublishActivityEventAsync(ProductActivityEvent evt)=> _publish.SendProductActivityForReporting(evt);
 
         // CRUD +SEARCH + FILTER
 
@@ -83,7 +96,7 @@ namespace CatalogService.Repositories
                 _logger.LogInformation("Product {ProductId} created.", product.Id);
                 await PublishStatusEventAsync(product);
 
-                // Also publish a creation activity so ProductManager "Recent Activity" includes newly created products.
+                // Also publish a creation activity when product is created.
                 await PublishActivityEventAsync(new ProductActivityEvent
                 {
                     ProductId = product.Id,
@@ -105,16 +118,15 @@ namespace CatalogService.Repositories
                 throw;
             }
         }
-
+        /// <summary>
+        /// Get all products from the Db
+        /// </summary>
+        /// <returns></returns>
         public async Task<List<Product>> GetAllProductsAsync()
         {
             try
             {
-                var products = await _context.Products
-                    .Include(p => p.Category)
-                    .Include(p => p.Variants)
-                    .Include(p => p.Media)
-                    .ToListAsync();
+                var products = await _context.Products.Include(p => p.Category).Include(p => p.Variants).Include(p => p.Media).ToListAsync();
 
                 _logger.LogInformation("Retrieved {Count} products.", products.Count);
                 return products;
@@ -130,11 +142,7 @@ namespace CatalogService.Repositories
         {
             try
             {
-                var query = _context.Products
-                    .Include(p => p.Category)
-                    .Include(p => p.Variants)
-                    .Include(p => p.Media)
-                    .AsQueryable();
+                var query = _context.Products.Include(p => p.Category).Include(p => p.Variants).Include(p => p.Media).AsQueryable(); // asQueryable allows to add conditions dynamically.
 
                 if (status.HasValue)
                 {
@@ -142,11 +150,7 @@ namespace CatalogService.Repositories
                 }
 
                 var totalCount = await query.CountAsync();
-                var items = await query
-                    .OrderByDescending(p => p.Id)
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToListAsync();
+                var items = await query.OrderByDescending(p => p.Id).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
 
                 return (items, totalCount);
             }
@@ -156,7 +160,12 @@ namespace CatalogService.Repositories
                 throw;
             }
         }
-
+        /// <summary>
+        /// Retreive product details from product id.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        /// <exception cref="ProductNotFoundException"></exception>
         public async Task<Product> GetProductDetailsAsync(int id)
         {
             try
@@ -182,17 +191,20 @@ namespace CatalogService.Repositories
                 throw;  
             }
         }
-
+        /// <summary>
+        /// UPdate product with the new Product object
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="updatedProduct"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidProductStatusTransitionException"></exception>
         public async Task UpdateProductAsync(int id, Product updatedProduct)
         {
             try
             {
                 var product = await GetProductOrThrowAsync(id);
 
-                var existingMediaUrls = product.Media
-                    .Select(m => m.MediaUrl)
-                    .Where(u => !string.IsNullOrWhiteSpace(u))
-                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                var existingMediaUrls = product.Media.Select(m => m.MediaUrl).Where(u => !string.IsNullOrWhiteSpace(u)).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
                 if (product.Status != ProductStatus.Draft && product.Status != ProductStatus.Submitted &&
                     product.Status != ProductStatus.Rejected &&
@@ -272,7 +284,12 @@ namespace CatalogService.Repositories
                 throw;
             }
         }
-
+        /// <summary>
+        /// Search Products
+        /// </summary>
+        /// <param name="query"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentException"></exception>
         public async Task<List<Product>> SearchProductAsync(string query)
         {
             if (string.IsNullOrWhiteSpace(query))
@@ -283,12 +300,9 @@ namespace CatalogService.Repositories
 
             try
             {
-                var products = await _context.Products
-                    .Where(p => (p.Name.Contains(query) || p.Description.Contains(query))
+                var products = await _context.Products.Where(p => (p.Name.Contains(query) || p.Description.Contains(query))
                              && p.Status != ProductStatus.Draft
-                             && p.Status != ProductStatus.Inactive)
-                    .Include(p => p.Media)
-                    .ToListAsync();
+                             && p.Status != ProductStatus.Inactive).Include(p => p.Media).ToListAsync();
 
                 _logger.LogInformation("Found {Count} products matching '{Query}'.", products.Count, query);
 
@@ -300,18 +314,17 @@ namespace CatalogService.Repositories
                 throw;
             }
         }
-
+        /// <summary>
+        /// Retreive product by category
+        /// </summary>
+        /// <param name="categoryId"></param>
+        /// <returns></returns>
         public async Task<List<Product>> GetProductsByCategoryAsync(int categoryId)
         {
             try
             {
-                var products = await _context.Products
-                    .Where(p => p.CategoryId == categoryId
-                             && p.Status != ProductStatus.Draft
-                             && p.Status != ProductStatus.Inactive)
-                    .Include(p => p.Category)
-                    .Include(p => p.Media)
-                    .ToListAsync();
+                var products = await _context.Products.Where(p => p.CategoryId == categoryId&& p.Status != ProductStatus.Draft&& p.Status != ProductStatus.Inactive)
+                    .Include(p => p.Category).Include(p => p.Media).ToListAsync();
 
                 _logger.LogInformation("Retrieved {Count} products for category {CategoryId}.", products.Count, categoryId);
                 return products;
@@ -319,10 +332,13 @@ namespace CatalogService.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving products for category {CategoryId}.", categoryId);
-                throw;  // was: return default
+                throw;  
             }
         }
-
+        /// <summary>
+        /// Retreive all categories
+        /// </summary>
+        /// <returns></returns>
         public async Task<List<Category>> GetCategoriesAsync()
         {
             try
@@ -337,7 +353,12 @@ namespace CatalogService.Repositories
                 throw;
             }
         }
-
+        /// <summary>
+        /// Add a new category.
+        /// </summary>
+        /// <param name="category"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentNullException"></exception>
         public async Task<Category> CreateCategoryAsync(Category category)
         {
             if (category is null)
@@ -358,7 +379,7 @@ namespace CatalogService.Repositories
             }
         }
 
-        // ─── Product Lifecycle ────────────────────────────────────────────────────
+        // Product Lifecycle
 
         public async Task SubmitProduct(int productId)
         {
@@ -410,7 +431,7 @@ namespace CatalogService.Repositories
             {
                 var product = await GetProductOrThrowAsync(productId);
 
-                // Allow Admin to reject directly from Draft as well (no need to submit first).
+                // Allow Admin to reject directly from Draft as well
                 if (product.Status != ProductStatus.Draft
                     && product.Status != ProductStatus.Submitted
                     && product.Status != ProductStatus.Active
@@ -432,6 +453,12 @@ namespace CatalogService.Repositories
 
         // Updates
 
+        /// <summary>
+        /// Update Price of the product
+        /// </summary>
+        /// <param name="productId"></param>
+        /// <param name="newPrice"></param>
+        /// <returns></returns>
         public async Task UpdatePriceAsync(int productId, decimal newPrice)
         {
             try
@@ -461,6 +488,13 @@ namespace CatalogService.Repositories
             }
         }
 
+        /// <summary>
+        /// UPdate Stock of the product
+        /// </summary>
+        /// <param name="productId"></param>
+        /// <param name="quantity"></param>
+        /// <returns></returns>
+        /// <exception cref="NegativeStockException"></exception>
         public async Task UpdateStockAsync(int productId, int quantity)
         {
             if (quantity < 0)
@@ -490,7 +524,11 @@ namespace CatalogService.Repositories
                 throw;
             }
         }
-
+        /// <summary>
+        /// Delete existing product
+        /// </summary>
+        /// <param name="productId"></param>
+        /// <returns></returns>
         public async Task DeleteProductAsync(int productId)
         {
             try
@@ -508,8 +546,14 @@ namespace CatalogService.Repositories
                 throw;
             }
         }
-
-        public async Task DeductStockAsync(int productId, int quantity)  // was: Task<bool>
+        /// <summary>
+        /// Deduct stock of the product
+        /// </summary>
+        /// <param name="productId"></param>
+        /// <param name="quantity"></param>
+        /// <returns></returns>
+        /// <exception cref="InsufficientStockException"></exception>
+        public async Task DeductStockAsync(int productId, int quantity) 
         {
             try
             {
@@ -523,7 +567,7 @@ namespace CatalogService.Repositories
                 _logger.LogInformation("Deducted {Quantity} from product {ProductId}. Remaining: {Remaining}.",
                     quantity, productId, product.AvailableQuantity);
             }
-            catch (CatalogException) { throw; }  // was: return default — this swallowed InsufficientStockException!
+            catch (CatalogException) { throw; }  
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error deducting stock for product {ProductId}.", productId);
@@ -531,8 +575,16 @@ namespace CatalogService.Repositories
             }
         }
 
-        // ─── Variant Methods ──────────────────────────────────────────────────────
+        // Variant Methods 
 
+        /// <summary>
+        /// Create a new variant for the existing product
+        /// </summary>
+        /// <param name="variant"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="ProductNotFoundException"></exception>
+        /// <exception cref="VariantSkuConflictException"></exception>
         public async Task CreateVariantAsync(ProductVariant variant)
         {
             if (variant is null)
@@ -544,13 +596,13 @@ namespace CatalogService.Repositories
             if (!await _context.Products.AnyAsync(p => p.Id == variant.ProductId))
             {
                 _logger.LogWarning("Product {ProductId} not found when creating variant.", variant.ProductId);
-                throw new ProductNotFoundException(variant.ProductId);   // was: Console.WriteLine; return
+                throw new ProductNotFoundException(variant.ProductId);  
             }
 
             if (await _context.ProductVariants.AnyAsync(v => v.ProductId == variant.ProductId && v.SKU == variant.SKU))
             {
                 _logger.LogWarning("SKU '{SKU}' already exists for product {ProductId}.", variant.SKU, variant.ProductId);
-                throw new VariantSkuConflictException(variant.SKU, variant.ProductId);  // was: Console.WriteLine; return
+                throw new VariantSkuConflictException(variant.SKU, variant.ProductId);  
             }
 
             try
@@ -572,15 +624,16 @@ namespace CatalogService.Repositories
                 throw;
             }
         }
-
+        /// <summary>
+        /// Retreive variants of products
+        /// </summary>
+        /// <param name="productId"></param>
+        /// <returns></returns>
         public async Task<List<ProductVariant>> GetVariantsByProductAsync(int productId)
         {
             try
             {
-                var variants = await _context.ProductVariants
-                    .Where(v => v.ProductId == productId)
-                    .Include(v => v.Product)
-                    .ToListAsync();
+                var variants = await _context.ProductVariants.Where(v => v.ProductId == productId).Include(v => v.Product).ToListAsync();
 
                 _logger.LogInformation("Retrieved {Count} variants for product {ProductId}.", variants.Count, productId);
                 return variants;
@@ -591,7 +644,12 @@ namespace CatalogService.Repositories
                 throw;
             }
         }
-
+        /// <summary>
+        /// Retrieve variant details
+        /// </summary>
+        /// <param name="variantId"></param>
+        /// <returns></returns>
+        /// <exception cref="VariantNotFoundException"></exception>
         public async Task<ProductVariant> GetVariantDetailsAsync(int variantId)
         {
             try
@@ -612,7 +670,12 @@ namespace CatalogService.Repositories
                 throw;
             }
         }
-
+        /// <summary>
+        /// UPdate variants details
+        /// </summary>
+        /// <param name="variantId"></param>
+        /// <param name="updatedVariant"></param>
+        /// <returns></returns>
         public async Task UpdateVariantAsync(int variantId, ProductVariant updatedVariant)
         {
             try
@@ -639,7 +702,12 @@ namespace CatalogService.Repositories
                 throw;
             }
         }
-
+        /// <summary>
+        /// update price of variant
+        /// </summary>
+        /// <param name="variantId"></param>
+        /// <param name="newPrice"></param>
+        /// <returns></returns>
         public async Task UpdateVariantPriceAsync(int variantId, decimal newPrice)
         {
             try
@@ -656,7 +724,13 @@ namespace CatalogService.Repositories
                 throw;
             }
         }
-
+        /// <summary>
+        /// update stock of variant 
+        /// </summary>
+        /// <param name="variantId"></param>
+        /// <param name="quantity"></param>
+        /// <returns></returns>
+        /// <exception cref="NegativeStockException"></exception>
         public async Task UpdateVariantStockAsync(int variantId, int quantity)
         {
             if (quantity < 0)
@@ -676,7 +750,11 @@ namespace CatalogService.Repositories
                 throw;
             }
         }
-
+        /// <summary>
+        /// Delete variant of a product
+        /// </summary>
+        /// <param name="variantId"></param>
+        /// <returns></returns>
         public async Task DeleteVariantAsync(int variantId)
         {
             try
@@ -694,7 +772,7 @@ namespace CatalogService.Repositories
             }
         }
 
-        public async Task DeductVariantStockAsync(int variantId, int quantity)  // was: Task<bool>
+        public async Task DeductVariantStockAsync(int variantId, int quantity)  
         {
             try
             {

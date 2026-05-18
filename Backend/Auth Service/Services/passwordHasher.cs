@@ -7,7 +7,7 @@ namespace ECommerceProductManagement.Services
     public class PasswordHasher : IPasswordHasher
     {
         private const int SaltSize = 16; // 128-bit
-        private const int KeySize = 32;  // 256-bit
+        private const int KeySize = 32;  // 256-bit (hash length)
         private const int Iterations = 10000;
         public string Hash(string password)
         {
@@ -16,10 +16,10 @@ namespace ECommerceProductManagement.Services
                 if (string.IsNullOrWhiteSpace(password))
                     throw new ArgumentException("Password cannot be empty.");
 
-                // Generate salt
+                // Generate salt : Creates a cryptographically secure random byte array
                 var salt = RandomNumberGenerator.GetBytes(SaltSize);
 
-                // Derive key using PBKDF2
+                // Derive key using PBKDF2 (better than SHA256)
                 var hash = Rfc2898DeriveBytes.Pbkdf2(password,salt,Iterations,HashAlgorithmName.SHA256,KeySize);
 
                 // Combine salt + hash
@@ -27,7 +27,7 @@ namespace ECommerceProductManagement.Services
                 Buffer.BlockCopy(salt, 0, result, 0, SaltSize);
                 Buffer.BlockCopy(hash, 0, result, SaltSize, KeySize);
 
-                return Convert.ToBase64String(result);
+                return Convert.ToBase64String(result);  // Converts byte to string
             }
             catch (ArgumentException ex)
             {
@@ -42,7 +42,12 @@ namespace ECommerceProductManagement.Services
                 Console.WriteLine("Unexpected error while hashing password.", ex); return default;
             }
         }
-
+        /// <summary>
+        /// Takes the password, hash it and compare with the stored one.
+        /// </summary>
+        /// <param name="password"></param>
+        /// <param name="storedHash"></param>
+        /// <returns></returns>
         public bool Verify(string password, string storedHash)
         {
             try

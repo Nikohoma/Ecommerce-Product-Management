@@ -3,6 +3,9 @@ using ECommerceProductManagement.Models;
 
 namespace Auth.Repository
 {
+    /// <summary>
+    /// Interface holding all the async methods that communicates with Db
+    /// </summary>
     public interface IUserRepository
     {
         Task<bool> EmailExistsAsync(string email);

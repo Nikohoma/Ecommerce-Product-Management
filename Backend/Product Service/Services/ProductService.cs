@@ -22,6 +22,13 @@ namespace CatalogService.Services
             _logger = logger;
         }
 
+        /// <summary>
+        /// Create a new Product.
+        /// Assign Draft Status to the new product created.
+        /// </summary>
+        /// <param name="product"></param>
+        /// <returns></returns>
+        /// <exception cref="CategoryNotFoundException"></exception>
         public async Task CreateProduct(ProductCreateDto product)
         {
             if (!await _context.Categories.AnyAsync(c => c.Id == product.CategoryId))
@@ -32,7 +39,7 @@ namespace CatalogService.Services
 
             var newProduct = new Product
             {
-                // After creation we start in Draft state.
+                // After creation product is assigned to Draft state.
                 Status = ProductStatus.Draft,
                 Name = product.Name,
                 Description = product.Description,
@@ -44,8 +51,7 @@ namespace CatalogService.Services
                     .Select(url => new ProductMedia { MediaUrl = url.Trim(), MediaType = "image" })
                     .ToList(),
                 Tags = product.Tags,
-                Variants = product.Variants
-                    .Select(v => new ProductVariant
+                Variants = product.Variants.Select(v => new ProductVariant
                     {
                         SKU = v.SKU,
                         Price = v.Price,
@@ -58,19 +64,32 @@ namespace CatalogService.Services
             await _repo.CreateProductAsync(newProduct);
             _logger.LogInformation("Product '{Name}' created successfully.", product.Name);
         }
-
+        /// <summary>
+        /// Delete Product. Directs to the method in Product Repository
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         public async Task DeleteProduct(int id)
         {
             await _repo.DeleteProductAsync(id);
             _logger.LogInformation("Product {ProductId} deleted.", id);
         }
-
+        /// <summary>
+        /// Retrieve all product
+        /// </summary>
+        /// <returns></returns>
         public async Task<List<Product>> GetAllProducts()
         {
             _logger.LogInformation("Fetching all products.");
             return await _repo.GetAllProductsAsync();
         }
-
+        /// <summary>
+        /// Get products based on the pageSize. Directs to the method in Repository layer
+        /// </summary>
+        /// <param name="page"></param>
+        /// <param name="pageSize"></param>
+        /// <param name="status"></param>
+        /// <returns></returns>
         public async Task<PaginatedResult<Product>> GetPaginatedProducts(int page, int pageSize, ProductStatus? status = null)
         {
             _logger.LogInformation("Fetching products for page {Page} with size {PageSize} and status {Status}.", page, pageSize, status);
@@ -84,33 +103,54 @@ namespace CatalogService.Services
                 PageSize = pageSize
             };
         }
-
+        /// <summary>
+        /// Retreive product detail
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         public async Task<Product> GetProductDetails(int id)
         {
             var result = await _repo.GetProductDetailsAsync(id);
             _logger.LogInformation("Fetched details for Product {ProductId}.", id);
             return result;
         }
-
+        /// <summary>
+        /// search product
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
         public async Task<List<Product>> SearchProduct(string name)
         {
             var find = await _repo.SearchProductAsync(name);
             _logger.LogInformation("Search completed for '{Name}'. Found {Count} results.", name, find.Count);
             return find;
         }
-
+        /// <summary>
+        /// Retreive product based on the category
+        /// </summary>
+        /// <param name="categoryId"></param>
+        /// <returns></returns>
         public async Task<List<Product>> GetProductsByCategory(int categoryId)
         {
             _logger.LogInformation("Fetching products for Category {CategoryId}.", categoryId);
             return await _repo.GetProductsByCategoryAsync(categoryId);
         }
-
+        /// <summary>
+        /// Retreive all categories
+        /// </summary>
+        /// <returns></returns>
         public async Task<List<Category>> GetCategories()
         {
             _logger.LogInformation("Fetching all categories.");
             return await _repo.GetCategoriesAsync();
         }
-
+        /// <summary>
+        /// Create a new category
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="InvalidOperationException"></exception>
         public async Task<Category> CreateCategory(string name)
         {
             var trimmed = name?.Trim();
@@ -131,6 +171,13 @@ namespace CatalogService.Services
             return created;
         }
 
+        // Change Status of Products
+
+        /// <summary>
+        /// Change status of product to submit
+        /// </summary>
+        /// <param name="productId"></param>
+        /// <returns></returns>
         public async Task SubmitProduct(int productId)
         {
             await _repo.SubmitProduct(productId);
@@ -171,7 +218,7 @@ namespace CatalogService.Services
 
             var product = new Product
             {
-                // After editing we re-open the product in Draft state.
+                // After editing, the product returns to Draft state.
                 Status = ProductStatus.Draft,
                 Name = updatedProduct.Name,
                 Description = updatedProduct.Description,
@@ -275,7 +322,7 @@ namespace CatalogService.Services
         {
             if (string.IsNullOrWhiteSpace(attributes) && string.IsNullOrWhiteSpace(imageUrl))
             {
-                // DB column `ProductVariants.Attributes` is non-nullable; store an explicit empty JSON payload.
+                // DB column `ProductVariants.Attributes` is non-nullable
                 return JsonSerializer.Serialize(new { details = (string?)null, imageUrl = (string?)null });
             }
 

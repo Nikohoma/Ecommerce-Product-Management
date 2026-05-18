@@ -2,6 +2,9 @@ using Auth.DTOs;
 
 namespace Auth.Services
 {
+    /// <summary>
+    /// Interface containing methods for Auth Service
+    /// </summary>
     public interface IAuthService
     {
         Task<(string accessToken, string refreshToken)?> LoginAsync(string email, string password);

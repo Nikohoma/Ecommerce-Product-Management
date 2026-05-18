@@ -13,6 +13,7 @@ namespace ReportingService.Services
         private readonly ReportingDbContext _db;
         private readonly ILogger<ReportService> _logger;
 
+        // DI
         public ReportService(IReportRepository repository, ReportingDbContext db, ILogger<ReportService> logger)
         {
             _repository = repository;
@@ -20,15 +21,14 @@ namespace ReportingService.Services
             _logger = logger;
         }
 
-        // Pure pass-throughs — repo already logs and throws; no value adding a wrapper here
+        // repo logs these requests
         public Task<int> GetApprovedCountAsync() => _repository.GetApprovedCountAsync();
         public Task<int> GetRejectedCountAsync() => _repository.GetRejectedCountAsync();
         public Task<int> GetPendingCountAsync() => _repository.GetPendingCountAsync();
         public Task<decimal> GetTotalInventoryValueAsync() => _repository.GetTotalInventoryValueAsync();
         public Task<decimal> GetAveragePriceAsync() => _repository.GetAveragePriceAsync();
-        public Task<List<ProductReport>> GetAllReportsAsync() => _repository.GetAllReportsAsync();
-        public Task<List<ProductReport>> GetReportsByProductIdAsync(int productId)
-            => _repository.GetReportsByProductIdAsync(productId);
+        public Task<List<ProductReport>> GetAllReportsAsync()=> _repository.GetAllReportsAsync();
+        public Task<List<ProductReport>> GetReportsByProductIdAsync(int productId)=> _repository.GetReportsByProductIdAsync(productId);
 
         public async Task<DashboardDto> GetDashboardAsync()
         {
@@ -39,9 +39,7 @@ namespace ReportingService.Services
                 var pending = await _repository.GetPendingCountAsync();
                 var totalValue = await _repository.GetTotalInventoryValueAsync();
 
-                _logger.LogInformation(
-                    "Dashboard aggregated — Approved: {Approved}, Rejected: {Rejected}, " +
-                    "Pending: {Pending}, TotalValue: {TotalValue}",
+                _logger.LogInformation("Dashboard aggregated — Approved: {Approved}, Rejected: {Rejected}, " +"Pending: {Pending}, TotalValue: {TotalValue}",
                     approved, rejected, pending, totalValue);
 
                 return new DashboardDto
@@ -62,7 +60,11 @@ namespace ReportingService.Services
                 throw new DashboardAggregationException(ex);
             }
         }
-
+        /// <summary>
+        /// Retrieve count of approved and rejected products
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="ApprovalRateException"></exception>
         public async Task<double> GetApprovalRateAsync()
         {
             try
@@ -92,7 +94,11 @@ namespace ReportingService.Services
                 throw new ApprovalRateException(ex);
             }
         }
-
+        /// <summary>
+        /// Get reports of recent products.
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="RecentReportsException"></exception>
         public async Task<List<ProductReport>> GetRecentReportsAsync()
         {
             try
@@ -100,9 +106,7 @@ namespace ReportingService.Services
                 var cutoff = DateTime.UtcNow.AddDays(-7);
                 var reports = await _repository.GetAllReportsAsync();
 
-                var recent = reports
-                    .Where(r => r.UpdatedAt >= cutoff)
-                    .ToList();
+                var recent = reports.Where(r => r.UpdatedAt >= cutoff).ToList();
 
                 _logger.LogInformation(
                     "Recent reports fetched — {Count} report(s) updated since {Cutoff:O}",
@@ -121,6 +125,12 @@ namespace ReportingService.Services
             }
         }
 
+        /// <summary>
+        /// Get recent changes to the products.
+        /// </summary>
+        /// <param name="category"></param>
+        /// <returns></returns>
+        /// <exception cref="RecentReportsException"></exception>
         public async Task<List<ProductActivity>> GetRecentActivitiesAsync(string category)
         {
             var cutoff = DateTime.UtcNow.AddDays(-7);
@@ -132,20 +142,14 @@ namespace ReportingService.Services
 
                 if (normalized == "logistics")
                 {
-                    query = query.Where(a =>
-                        a.ActivityType == "ProductCreated" ||
-                        a.ActivityType == "PriceUpdated" ||
-                        a.ActivityType == "StockUpdated");
+                    query = query.Where(a =>a.ActivityType == "ProductCreated" ||a.ActivityType == "PriceUpdated" ||a.ActivityType == "StockUpdated");
                 }
                 else if (normalized == "media")
                 {
                     query = query.Where(a => a.ActivityType == "MediaUploaded");
                 }
 
-                var recent = await query
-                    .OrderByDescending(a => a.UpdatedAt)
-                    .Take(50)
-                    .ToListAsync();
+                var recent = await query.OrderByDescending(a => a.UpdatedAt).Take(50).ToListAsync();
 
                 _logger.LogInformation("Recent activities fetched — Category: {Category}, Count: {Count}", normalized, recent.Count);
                 return recent;
@@ -156,7 +160,13 @@ namespace ReportingService.Services
                 throw new RecentReportsException(ex);
             }
         }
-
+        /// <summary>
+        /// Recent reports retreival based on the pageSize
+        /// </summary>
+        /// <param name="page"></param>
+        /// <param name="pageSize"></param>
+        /// <returns></returns>
+        /// <exception cref="RecentReportsException"></exception>
         public async Task<PaginatedResult<ProductReport>> GetRecentReportsPagedAsync(int page, int pageSize)
         {
             var cutoff = DateTime.UtcNow.AddDays(-7);
@@ -167,11 +177,7 @@ namespace ReportingService.Services
             {
                 var query = _db.ProductReports.AsNoTracking().Where(r => r.UpdatedAt >= cutoff);
                 var total = await query.CountAsync();
-                var items = await query
-                    .OrderByDescending(r => r.UpdatedAt)
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToListAsync();
+                var items = await query.OrderByDescending(r => r.UpdatedAt).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
 
                 return new PaginatedResult<ProductReport>
                 {

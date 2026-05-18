@@ -17,7 +17,17 @@ namespace Auth.Services
             _config = config;
             _logger = logger;
         }
-
+        /// <summary>
+        /// Method to send email using SMTP connection.
+        /// </summary>
+        /// <param name="to"></param>
+        /// <param name="subject"></param>
+        /// <param name="htmlBody"></param>
+        /// <returns></returns>
+        /// <exception cref="EmailAddressFormatException"></exception>
+        /// <exception cref="SmtpCommandFailedException"></exception>
+        /// <exception cref="SmtpProtocolFailedException"></exception>
+        /// <exception cref="EmailDeliveryException"></exception>
         public async Task SendAsync(string to, string subject, string htmlBody)
         {
             var (from, host, port, username, password) = ResolveConfig(); // REsolve and validate first
@@ -62,7 +72,7 @@ namespace Auth.Services
             }
         }
 
-        // Throws EmailConfigurationException early — before any I/O is attempted
+        // Throws EmailConfigurationException early before any I/O is attempted. Validates inputs
         private (string from, string host, int port, string username, string password) ResolveConfig()
         {
             var from = _config["Email:From"];
@@ -82,7 +92,14 @@ namespace Auth.Services
 
             return (from, host, port, username, password);
         }
-
+        /// <summary>
+        /// Builds message
+        /// </summary>
+        /// <param name="from"></param>
+        /// <param name="to"></param>
+        /// <param name="subject"></param>
+        /// <param name="htmlBody"></param>
+        /// <returns></returns>
         private static MimeMessage BuildMessage(string from, string to, string subject, string htmlBody)
         {
             var message = new MimeMessage();

@@ -3,6 +3,9 @@ using ReportingService.Models;
 
 namespace ReportingService.Services
 {
+    /// <summary>
+    /// Interface containing methods for Report Service
+    /// </summary>
     public interface IReportService
     {
         Task<int> GetApprovedCountAsync();

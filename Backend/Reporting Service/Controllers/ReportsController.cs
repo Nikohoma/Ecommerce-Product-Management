@@ -77,10 +77,6 @@ namespace ReportingService.Controllers
                 if (int.TryParse(Request.Query["page"], out var p)) page = p;
                 if (int.TryParse(Request.Query["pageSize"], out var ps)) pageSize = ps;
 
-                // Backward-compatible:
-                // - Admin: status workflow activity (ProductReports)
-                // - ProductManager: logistics activity (ProductActivities)
-                // - ContentExecutive: media activity (ProductActivities)
                 var role = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value;
                 if (string.Equals(role, "ProductManager", StringComparison.OrdinalIgnoreCase))
                     return Ok(await _service.GetRecentActivitiesPagedAsync("logistics", page, pageSize));

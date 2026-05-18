@@ -8,12 +8,14 @@ namespace CatalogService.Data
     {
         private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public ProductDbContext(DbContextOptions<ProductDbContext> options, IHttpContextAccessor httpContextAccessor)
-            : base(options) 
+        public ProductDbContext(DbContextOptions<ProductDbContext> options, IHttpContextAccessor httpContextAccessor): base(options) 
         {
             _httpContextAccessor = httpContextAccessor;
         }
 
+        /// <summary>
+        /// Tables
+        /// </summary>
         public DbSet<Product> Products { get; set; }
         public DbSet<Category> Categories { get; set; }
         public DbSet<ProductVariant> ProductVariants { get; set; }

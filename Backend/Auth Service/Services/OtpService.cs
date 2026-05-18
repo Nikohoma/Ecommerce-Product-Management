@@ -19,7 +19,17 @@ namespace Auth.Services
             _emailService = emailService;
             _logger = logger;
         }
-
+        /// <summary>
+        /// Remove old otp and generates a new one.
+        /// Adds the otp in the db.
+        /// </summary>
+        /// <param name="email"></param>
+        /// <param name="purpose"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="UserPersistenceException"></exception>
+        /// <exception cref="OtpGenerationException"></exception>
+        /// <exception cref="OtpDeliveryException"></exception>
         public async Task SendOtpAsync(string email, string purpose)
         {
             if (string.IsNullOrWhiteSpace(email))
@@ -75,7 +85,15 @@ namespace Auth.Services
                 throw new OtpDeliveryException(email, ex);
             }
         }
-
+        /// <summary>
+        /// Validates otp.
+        /// </summary>
+        /// <param name="email"></param>
+        /// <param name="code"></param>
+        /// <param name="purpose"></param>
+        /// <returns></returns>
+        /// <exception cref="UserPersistenceException"></exception>
+        /// <exception cref="OtpValidationException"></exception>
         public async Task<bool> ValidateOtpAsync(string email, string code, string purpose)
         {
             if (string.IsNullOrWhiteSpace(email) ||

@@ -21,9 +21,9 @@ namespace CatalogService.Repositories
         Task<Category> CreateCategoryAsync(Category category);
 
         // Product Lifecycle
-        Task SubmitProduct(int productId);           // Draft → Submitted
-        Task ApproveProductAsync(int productId);    // Submitted → Active
-        Task RejectProductAsync(int productId);     // Submitted → Rejected
+        Task SubmitProduct(int productId);           
+        Task ApproveProductAsync(int productId);    
+        Task RejectProductAsync(int productId);
 
         // Restricted Updates
         Task UpdatePriceAsync(int productId, decimal newPrice);    // Active only

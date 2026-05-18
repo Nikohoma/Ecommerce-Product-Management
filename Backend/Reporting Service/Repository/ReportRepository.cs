@@ -10,12 +10,18 @@ namespace ReportingService.Repository
         private readonly ReportingDbContext _context;
         private readonly ILogger<ReportRepository> _logger;
 
+        // DI 
         public ReportRepository(ReportingDbContext context, ILogger<ReportRepository> logger)
         {
             _context = context;
             _logger = logger;
         }
 
+        /// <summary>
+        /// Get products that are approved (Active and Inactive)
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="ReportQueryException"></exception>
         public async Task<int> GetApprovedCountAsync()
         {
             try
@@ -31,13 +37,16 @@ namespace ReportingService.Repository
                 throw new ReportQueryException("GetApprovedCount", ex);
             }
         }
-
+        /// <summary>
+        /// Retrieve Products that are rejected.
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="ReportQueryException"></exception>
         public async Task<int> GetRejectedCountAsync()
         {
             try
             {
-                var count = await _context.ProductReports
-                    .CountAsync(p => p.Status == "Rejected");
+                var count = await _context.ProductReports.CountAsync(p => p.Status == "Rejected");
 
                 _logger.LogInformation("Rejected report count: {Count}", count);
                 return count;
@@ -48,7 +57,11 @@ namespace ReportingService.Repository
                 throw new ReportQueryException("GetRejectedCount", ex);
             }
         }
-
+        /// <summary>
+        /// Retrieve Products that are pending (submitted for review)
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="ReportQueryException"></exception>
         public async Task<int> GetPendingCountAsync()
         {
             try
@@ -65,14 +78,16 @@ namespace ReportingService.Repository
                 throw new ReportQueryException("GetPendingCount", ex);
             }
         }
-
+        /// <summary>
+        /// Retrieve reports of all products.
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="ReportQueryException"></exception>
         public async Task<List<ProductReport>> GetAllReportsAsync()
         {
             try
             {
-                var reports = await _context.ProductReports
-                    .OrderByDescending(p => p.UpdatedAt)
-                    .ToListAsync();
+                var reports = await _context.ProductReports.OrderByDescending(p => p.UpdatedAt).ToListAsync();
 
                 _logger.LogInformation("Fetched {Count} product report(s)", reports.Count);
                 return reports;
@@ -83,15 +98,18 @@ namespace ReportingService.Repository
                 throw new ReportQueryException("GetAllReports", ex);
             }
         }
-
+        /// <summary>
+        /// Retrieve reports based on product.
+        /// </summary>
+        /// <param name="productId"></param>
+        /// <returns></returns>
+        /// <exception cref="ReportNotFoundException"></exception>
+        /// <exception cref="ReportQueryException"></exception>
         public async Task<List<ProductReport>> GetReportsByProductIdAsync(int productId)
         {
             try
             {
-                var reports = await _context.ProductReports
-                    .Where(p => p.ProductId == productId)
-                    .OrderByDescending(p => p.UpdatedAt)
-                    .ToListAsync();
+                var reports = await _context.ProductReports.Where(p => p.ProductId == productId).OrderByDescending(p => p.UpdatedAt).ToListAsync();
 
                 if (reports.Count == 0)
                 {
@@ -112,7 +130,11 @@ namespace ReportingService.Repository
                 throw new ReportQueryException("GetReportsByProductId", ex);
             }
         }
-
+        /// <summary>
+        /// Get the total value of all the products
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="ReportQueryException"></exception>
         public async Task<decimal> GetTotalInventoryValueAsync()
         {
             try
@@ -133,7 +155,11 @@ namespace ReportingService.Repository
                 throw new ReportQueryException("GetTotalInventoryValue", ex);
             }
         }
-
+        /// <summary>
+        /// Get average price of the latest products
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="ReportQueryException"></exception>
         public async Task<decimal> GetAveragePriceAsync()
         {
             try
@@ -154,7 +180,12 @@ namespace ReportingService.Repository
                 throw new ReportQueryException("GetAveragePrice", ex);
             }
         }
-
+        /// <summary>
+        /// Retrieve latest products
+        /// </summary>
+        /// <param name="callerOperation"></param>
+        /// <returns></returns>
+        /// <exception cref="EmptyReportSetException"></exception>
         private async Task<List<ProductReport>> GetLatestReportsPerProductAsync(string callerOperation)
         {
             var latestReports = await _context.ProductReports
